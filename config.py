@@ -50,12 +50,21 @@ COLORS = {
     "border": "#dee2e6"
 }
 
+# Currency settings
+CURRENCY_CODE = "DZD"  # ISO code for Algerian Dinar
+CURRENCY_SYMBOL = "DA"  # Dinar Algérien
+CURRENCY_POSITION = "after"  # Display currency symbol after the amount
+DECIMAL_PLACES = 2  # Number of decimal places for currency amounts
+THOUSANDS_SEPARATOR = " "  # Separator for thousands (space is common in Algeria)
+DECIMAL_SEPARATOR = "."  # Decimal separator
+
 # Business settings
 COMPANY_NAME = "My Company"
-COMPANY_ADDRESS = "123 Main Street, City, Country"
-COMPANY_PHONE = "+123456789"
+COMPANY_ADDRESS = "123 Main Street, Alger, Algérie"
+COMPANY_PHONE = "+213123456789"
 COMPANY_EMAIL = "contact@mycompany.com"
 COMPANY_WEBSITE = "www.mycompany.com"
+COMPANY_TAX_ID = "123456789"  # Company tax ID/registration number
 COMPANY_LOGO = None  # Path to logo if available
 
 # Invoice settings

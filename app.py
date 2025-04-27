@@ -154,8 +154,7 @@ def run_cli_mode():
         customer_count = 0
         
     try:
-        # Replace with the actual method name if different
-        invoices = invoice_controller.get_invoices()
+        invoices = invoice_controller.search_invoices(limit=1000)
         invoice_count = len(invoices) if invoices else 0
     except Exception as e:
         print(f"Error getting invoices: {e}")

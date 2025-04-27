@@ -222,7 +222,8 @@ class MainView(BaseView):
                     self.controllers["cash_register"],
                     self.controllers["stock"],
                     self.controllers["debt"],
-                    self.user
+                    self.user,
+                    self.controllers["category"]
                 )
             elif view_name == "products":
                 self.active_view = ProductView(

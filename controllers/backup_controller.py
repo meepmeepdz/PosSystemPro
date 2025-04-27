@@ -24,8 +24,40 @@ class BackupController:
         self.db = db
         self.backup_dir = "backups"
         self.ensure_backup_dir()
+        self.ensure_tables()
         self.auto_backup_thread = None
         self.stop_auto_backup = False
+        
+    def ensure_tables(self):
+        """Ensure that the necessary database tables exist."""
+        # Create backup_history table if it doesn't exist
+        self.db.execute("""
+            CREATE TABLE IF NOT EXISTS backup_history (
+                backup_id VARCHAR(36) PRIMARY KEY,
+                backup_name VARCHAR(100) NOT NULL,
+                file_path VARCHAR(255) NOT NULL,
+                file_size BIGINT NOT NULL,
+                compressed BOOLEAN NOT NULL,
+                description TEXT,
+                created_at TIMESTAMP NOT NULL
+            )
+        """)
+        
+        # Create restore_history table if it doesn't exist
+        self.db.execute("""
+            CREATE TABLE IF NOT EXISTS restore_history (
+                restore_id VARCHAR(36) PRIMARY KEY,
+                backup_id VARCHAR(36),
+                file_path VARCHAR(255) NOT NULL,
+                restore_date TIMESTAMP NOT NULL,
+                success BOOLEAN NOT NULL,
+                error_message TEXT,
+                CONSTRAINT fk_backup_id
+                    FOREIGN KEY (backup_id)
+                    REFERENCES backup_history(backup_id)
+                    ON DELETE SET NULL
+            )
+        """)
     
     def ensure_backup_dir(self):
         """Create backup directory if it doesn't exist."""
@@ -435,19 +467,6 @@ class BackupController:
         backup_id = self._generate_id()
         now = datetime.datetime.now().isoformat()
         
-        # Create backup_history table if it doesn't exist
-        self.db.execute("""
-            CREATE TABLE IF NOT EXISTS backup_history (
-                backup_id VARCHAR(36) PRIMARY KEY,
-                backup_name VARCHAR(100) NOT NULL,
-                file_path VARCHAR(255) NOT NULL,
-                file_size BIGINT NOT NULL,
-                compressed BOOLEAN NOT NULL,
-                description TEXT,
-                created_at TIMESTAMP NOT NULL
-            )
-        """)
-        
         # Insert backup record
         query = """
             INSERT INTO backup_history (
@@ -469,17 +488,6 @@ class BackupController:
         Returns:
             dict: Restore information
         """
-        # Create restore_history table if it doesn't exist
-        self.db.execute("""
-            CREATE TABLE IF NOT EXISTS restore_history (
-                restore_id VARCHAR(36) PRIMARY KEY,
-                backup_id VARCHAR(36),
-                file_path VARCHAR(255) NOT NULL,
-                restore_date TIMESTAMP NOT NULL,
-                success BOOLEAN NOT NULL,
-                error_message TEXT
-            )
-        """)
         
         # Insert restore record
         query = """

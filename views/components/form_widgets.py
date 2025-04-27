@@ -61,3 +61,45 @@ class FormFrame(ttk.Frame):
         
         # Configure grid to expand with window
         self.columnconfigure(0, weight=1)
+    
+    def add_section_header(self, text):
+        """Add a section header to the form.
+        
+        Args:
+            text (str): The header text
+        """
+        header_label = ttk.Label(self, text=text, font=("", 11, "bold"))
+        header_label.pack(anchor=tk.W, pady=(10, 5))
+        ttk.Separator(self, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=5)
+        
+        return header_label
+    
+    def add_field(self, label_text, variable, input_class=ttk.Entry, input_args=None, label_args=None):
+        """Add a field to the form.
+        
+        Args:
+            label_text (str): The label text
+            variable: The variable to bind to the input
+            input_class: The input widget class (default: ttk.Entry)
+            input_args (dict, optional): Additional arguments for the input widget
+            label_args (dict, optional): Additional arguments for the label widget
+            
+        Returns:
+            tuple: The frame, label, and input widgets
+        """
+        # Create a frame for the field
+        field_frame = ttk.Frame(self)
+        field_frame.pack(fill=tk.X, pady=5)
+        
+        # Create the label
+        label = ttk.Label(field_frame, text=label_text, width=15, anchor=tk.W)
+        label.pack(side=tk.LEFT, padx=5)
+        
+        # Set default input arguments
+        input_args = input_args or {}
+        
+        # Create the input
+        input_widget = input_class(field_frame, textvariable=variable, **input_args)
+        input_widget.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        return field_frame, label, input_widget
