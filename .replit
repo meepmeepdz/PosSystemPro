@@ -1,4 +1,4 @@
-modules = ["python-3.11"]
+modules = ["python-3.11", "postgresql-16"]
 
 [nix]
 channel = "stable-24_05"
@@ -23,7 +23,6 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python app.py"
-waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "python app.py"]

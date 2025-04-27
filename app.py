@@ -11,15 +11,33 @@ and starts the application loop.
 import sys
 import traceback
 import os
-
-# Import database initialization
-from models.database import Database
+import subprocess
+import platform
+import time
 
 # Check if we're running in a graphical environment
 HAS_DISPLAY = os.environ.get('DISPLAY') or (sys.platform == 'win32') or (sys.platform == 'darwin')
 
 # Non-GUI mode flag - check if this is explicitly requested or if we're in a headless environment
 NON_GUI_MODE = os.environ.get('POS_NON_GUI', 'false').lower() in ('true', '1', 't') or not HAS_DISPLAY
+
+# Add compatibility for headless environments
+if platform.system() == "Linux" and not os.environ.get('DISPLAY'):
+    print("No display found. Attempting to set up virtual display...")
+    try:
+        # Check if Xvfb is installed
+        subprocess.check_call(['which', 'Xvfb'], stdout=subprocess.DEVNULL)
+        # Start Xvfb
+        display_num = 99
+        subprocess.Popen(['Xvfb', f':{display_num}', '-screen', '0', '1280x1024x24'])
+        os.environ['DISPLAY'] = f':{display_num}'
+        print(f"Virtual display set up with DISPLAY=:{display_num}")
+        time.sleep(1)  # Give Xvfb time to start
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("Xvfb not found. Cannot set up virtual display.")
+
+# Import database initialization
+from models.database import Database
 
 # Import controllers
 from controllers.auth_controller import AuthController
@@ -49,8 +67,12 @@ def setup_database():
 
 def run_cli_mode():
     """Run the application in command-line interface mode."""
+    print("\n=======================================================================================")
+    print("                                 POS SYSTEM")
+    print("=======================================================================================")
     print("Running POS System in non-GUI mode (Command Line Interface)")
     print("This mode is intended for server environments without a display.")
+    print("To run in GUI mode with a display, set the POS_NON_GUI environment variable to 'false'.")
     
     # Initialize database
     db = setup_database()
@@ -68,6 +90,26 @@ def run_cli_mode():
     debt_controller = DebtController(db)
     report_controller = ReportController(db)
     backup_controller = BackupController(db)
+    
+    # Create admin user if it doesn't exist
+    print("Checking for admin user...")
+    try:
+        admin_user = auth_controller.login("admin", "admin123")
+        if admin_user:
+            print("Admin user already exists.")
+        else:
+            from models.user import User
+            user_model = User(db)
+            user_model.create_user(
+                username="admin",
+                password="admin123",
+                full_name="System Administrator",
+                role="ADMIN",
+                email="admin@example.com"
+            )
+            print("Created default admin user (username: admin, password: admin123)")
+    except Exception as e:
+        print(f"Error checking/creating admin user: {e}")
     
     controllers = {
         'auth': auth_controller,
@@ -96,9 +138,28 @@ def run_cli_mode():
         print(f"{i}. Username: {user['username']} | Role: {user['role']} | Name: {user['full_name']}")
     
     # Show some basic stats
-    product_count = product_controller.count_products()
-    customer_count = customer_controller.count_customers()
-    invoice_count = invoice_controller.count_invoices()
+    # Get counts safely
+    try:
+        products = product_controller.get_all_products()
+        product_count = len(products) if products else 0
+    except Exception as e:
+        print(f"Error getting products: {e}")
+        product_count = 0
+        
+    try:
+        customers = customer_controller.get_all_customers()
+        customer_count = len(customers) if customers else 0
+    except Exception as e:
+        print(f"Error getting customers: {e}")
+        customer_count = 0
+        
+    try:
+        # Replace with the actual method name if different
+        invoices = invoice_controller.get_invoices()
+        invoice_count = len(invoices) if invoices else 0
+    except Exception as e:
+        print(f"Error getting invoices: {e}")
+        invoice_count = 0
     
     print("\nSystem Statistics:")
     print(f"- Products: {product_count}")
