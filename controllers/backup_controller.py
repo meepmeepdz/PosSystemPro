@@ -30,32 +30,32 @@ class BackupController:
         
     def ensure_tables(self):
         """Ensure that the necessary database tables exist."""
-        # Create backup_history table if it doesn't exist
+        # Create backups table if it doesn't exist
         self.db.execute("""
-            CREATE TABLE IF NOT EXISTS backup_history (
+            CREATE TABLE IF NOT EXISTS backups (
                 backup_id VARCHAR(36) PRIMARY KEY,
                 backup_name VARCHAR(100) NOT NULL,
                 file_path VARCHAR(255) NOT NULL,
                 file_size BIGINT NOT NULL,
-                compressed BOOLEAN NOT NULL,
+                compressed BOOLEAN NOT NULL DEFAULT FALSE,
                 description TEXT,
                 created_at TIMESTAMP NOT NULL
             )
         """)
         
-        # Create restore_history table if it doesn't exist
+        # Create restore_logs table if it doesn't exist
         self.db.execute("""
-            CREATE TABLE IF NOT EXISTS restore_history (
+            CREATE TABLE IF NOT EXISTS restore_logs (
                 restore_id VARCHAR(36) PRIMARY KEY,
-                backup_id VARCHAR(36),
+                backup_id VARCHAR(36) NOT NULL,
                 file_path VARCHAR(255) NOT NULL,
                 restore_date TIMESTAMP NOT NULL,
-                success BOOLEAN NOT NULL,
-                error_message TEXT,
+                status VARCHAR(20) NOT NULL,
+                message TEXT,
                 CONSTRAINT fk_backup_id
                     FOREIGN KEY (backup_id)
-                    REFERENCES backup_history(backup_id)
-                    ON DELETE SET NULL
+                    REFERENCES backups(backup_id)
+                    ON DELETE CASCADE
             )
         """)
     
@@ -328,7 +328,7 @@ class BackupController:
             list: List of backup information
         """
         query = """
-            SELECT * FROM backup_history
+            SELECT * FROM backups
             ORDER BY created_at DESC
             LIMIT %s OFFSET %s
         """
@@ -343,7 +343,7 @@ class BackupController:
         Returns:
             dict: Backup information or None if not found
         """
-        query = "SELECT * FROM backup_history WHERE backup_id = %s"
+        query = "SELECT * FROM backups WHERE backup_id = %s"
         return self.db.fetch_one(query, (backup_id,))
     
     def delete_backup(self, backup_id):
@@ -369,7 +369,7 @@ class BackupController:
             os.remove(file_path)
         
         # Delete record
-        query = "DELETE FROM backup_history WHERE backup_id = %s"
+        query = "DELETE FROM backups WHERE backup_id = %s"
         self.db.execute(query, (backup_id,))
         
         return True
@@ -428,19 +428,19 @@ class BackupController:
         """
         # Get the most recent backup
         query = """
-            SELECT * FROM backup_history
+            SELECT * FROM backups
             ORDER BY created_at DESC
             LIMIT 1
         """
         latest_backup = self.db.fetch_one(query)
         
         # Get count of backups
-        query = "SELECT COUNT(*) as count FROM backup_history"
+        query = "SELECT COUNT(*) as count FROM backups"
         count_result = self.db.fetch_one(query)
         backup_count = count_result["count"] if count_result else 0
         
         # Calculate total size
-        query = "SELECT SUM(file_size) as total_size FROM backup_history"
+        query = "SELECT SUM(file_size) as total_size FROM backups"
         size_result = self.db.fetch_one(query)
         total_size = size_result["total_size"] if size_result and size_result["total_size"] else 0
         
@@ -469,7 +469,7 @@ class BackupController:
         
         # Insert backup record
         query = """
-            INSERT INTO backup_history (
+            INSERT INTO backups (
                 backup_id, backup_name, file_path, file_size, 
                 compressed, description, created_at
             ) VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -491,17 +491,20 @@ class BackupController:
         
         # Insert restore record
         query = """
-            INSERT INTO restore_history (
-                restore_id, backup_id, file_path, restore_date, success, error_message
+            INSERT INTO restore_logs (
+                restore_id, backup_id, file_path, restore_date, status, message
             ) VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING *
         """
+        # Convert success boolean to string status
+        status = "SUCCESS" if restore_info["success"] else "FAILED"
+        
         params = (
             restore_info["restore_id"],
             restore_info.get("backup_id"),
             restore_info["file_path"],
             restore_info["restore_date"],
-            restore_info["success"],
+            status,
             restore_info.get("error")
         )
         
