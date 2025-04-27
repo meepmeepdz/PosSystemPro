@@ -891,15 +891,20 @@ class InvoiceView(BaseView):
         current_price = item_values[3]  # Assuming price is the fourth column
         current_discount = item_values[4]  # Assuming discount is the fifth column
         
-        # Strip $ and convert to float
+        # Strip currency symbol and convert to float
         try:
-            current_price = float(current_price.replace("$", ""))
-            current_discount = current_discount.replace("$", "")
-            if current_discount == "None":
+            # Extract numeric value from price string (e.g., "1 234,56 DA" to 1234.56)
+            current_price_str = current_price.replace(" ", "").replace(",", ".").replace("DA", "").strip()
+            current_price = float(current_price_str)
+            
+            # Handle discount
+            if current_discount == "None" or current_discount == "-":
                 current_discount = ""
             else:
-                current_discount = float(current_discount)
-        except ValueError:
+                current_discount_str = current_discount.replace(" ", "").replace(",", ".").replace("DA", "").strip()
+                current_discount = float(current_discount_str)
+        except (ValueError, AttributeError, TypeError):
+            # In case of any conversion error, default to empty discount
             current_discount = ""
         
         # Get new discount from user
@@ -922,7 +927,10 @@ class InvoiceView(BaseView):
             if not new_discount.strip():
                 discount_price = None
             else:
-                discount_price = float(new_discount)
+                # Handle both decimal separators (point or comma)
+                # Convert comma to point for float conversion
+                new_discount_normalized = new_discount.replace(",", ".").replace(" ", "")
+                discount_price = float(new_discount_normalized)
                 if discount_price < 0:
                     raise ValueError("Discount cannot be negative")
                 # Safe comparison with correct types
@@ -1375,20 +1383,212 @@ class InvoiceView(BaseView):
             )
             footer_label.pack(fill=tk.X)
             
+            # Print and Export buttons in a frame
+            button_frame = ttk.Frame(receipt_frame)
+            button_frame.pack(pady=10, fill=tk.X)
+            
             # Print button
             print_button = ttk.Button(
-                receipt_frame, 
+                button_frame, 
                 text="Print", 
                 command=lambda: self._print_receipt_to_printer(receipt_window)
             )
-            print_button.pack(pady=10)
+            print_button.pack(side=tk.LEFT, padx=(0, 5), expand=True, fill=tk.X)
+            
+            # Export to PDF button
+            export_button = ttk.Button(
+                button_frame, 
+                text="Export to PDF", 
+                command=lambda: self._export_receipt_to_pdf(invoice_id)
+            )
+            export_button.pack(side=tk.RIGHT, padx=(5, 0), expand=True, fill=tk.X)
             
         except Exception as e:
             self.show_error(f"Error printing receipt: {str(e)}")
     
     def _print_receipt_to_printer(self, receipt_window):
         """Print the receipt to a printer."""
-        self.show_info("Printing functionality will be implemented based on your printer requirements")
+        try:
+            # This would normally use the OS print dialog or a direct printer API
+            # For now, we'll export to PDF and show a message
+            if self.show_confirmation("Would you like to export the receipt to PDF before printing?"):
+                invoice_id = self.current_invoice["invoice_id"]
+                pdf_path = self._export_receipt_to_pdf(invoice_id)
+                if pdf_path:
+                    self.show_success(f"Receipt exported to {pdf_path}\nYou can now print it using your PDF viewer.")
+            else:
+                self.show_info("Direct printing functionality will be implemented based on your printer requirements")
+        except Exception as e:
+            self.show_error(f"Error printing receipt: {str(e)}")
+            
+    def _export_receipt_to_pdf(self, invoice_id):
+        """Export the receipt to a PDF file.
+        
+        Args:
+            invoice_id: The ID of the invoice to export
+            
+        Returns:
+            str: The path to the exported PDF file, or None if export failed
+        """
+        try:
+            # Get the invoice with all details
+            invoice = self.invoice_controller.get_invoice_with_items(invoice_id)
+            if not invoice:
+                self.show_error("Invoice not found")
+                return None
+                
+            # Import necessary modules for PDF generation
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib import colors
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib.units import cm, mm
+            
+            # Import company details
+            from config import COMPANY_NAME, COMPANY_ADDRESS, COMPANY_PHONE, COMPANY_TAX_ID
+            
+            # Import currency formatter
+            from utils.currency_formatter import format_currency
+            
+            # Create the exports directory if it doesn't exist
+            from utils.export_utils import ensure_export_dir, EXPORT_DIR
+            ensure_export_dir()
+            
+            # Generate filename
+            import os
+            from datetime import datetime
+            filename = f"invoice_{invoice['invoice_number']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            filepath = os.path.join(EXPORT_DIR, filename)
+            
+            # Create the PDF document
+            doc = SimpleDocTemplate(
+                filepath,
+                pagesize=A4,
+                rightMargin=72,
+                leftMargin=72,
+                topMargin=72,
+                bottomMargin=72
+            )
+            
+            # Styles
+            styles = getSampleStyleSheet()
+            title_style = styles['Heading1']
+            subtitle_style = styles['Heading2']
+            normal_style = styles['Normal']
+            
+            # Content elements
+            elements = []
+            
+            # Add company header
+            elements.append(Paragraph(COMPANY_NAME, title_style))
+            elements.append(Paragraph(COMPANY_ADDRESS, normal_style))
+            elements.append(Paragraph(f"Phone: {COMPANY_PHONE}", normal_style))
+            elements.append(Paragraph(f"Tax ID: {COMPANY_TAX_ID}", normal_style))
+            elements.append(Spacer(1, 0.5 * cm))
+            
+            # Add invoice details
+            elements.append(Paragraph(f"Invoice #{invoice['invoice_number']}", subtitle_style))
+            
+            # Format the date
+            date_str = invoice["created_at"].strftime("%Y-%m-%d %H:%M") if invoice["created_at"] else "N/A"
+            elements.append(Paragraph(f"Date: {date_str}", normal_style))
+            
+            # Add customer details if available
+            if invoice["customer_name"]:
+                elements.append(Paragraph(f"Customer: {invoice['customer_name']}", normal_style))
+            
+            elements.append(Spacer(1, 0.5 * cm))
+            
+            # Items table
+            if "items" in invoice and invoice["items"]:
+                # Table header
+                data = [["Item", "Qty", "Price", "Total"]]
+                
+                # Table rows
+                for item in invoice["items"]:
+                    price = item["discount_price"] if item["discount_price"] is not None else item["unit_price"]
+                    price_str = format_currency(price) if price is not None else format_currency(0)
+                    total = format_currency(item['subtotal']) if item["subtotal"] is not None else format_currency(0)
+                    
+                    data.append([
+                        item["product_name"],
+                        str(item["quantity"]),
+                        price_str,
+                        total
+                    ])
+                
+                # Create table
+                table = Table(data, colWidths=[doc.width * 0.5, doc.width * 0.1, doc.width * 0.2, doc.width * 0.2])
+                
+                # Style the table
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+                    ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                    ('ALIGN', (1, 1), (1, -1), 'CENTER'),
+                    ('ALIGN', (2, 1), (3, -1), 'RIGHT'),
+                ]))
+                
+                elements.append(table)
+            
+            elements.append(Spacer(1, 0.5 * cm))
+            
+            # Total
+            total_str = format_currency(invoice['total_amount']) if invoice["total_amount"] is not None else format_currency(0)
+            total_data = [["Total:", total_str]]
+            total_table = Table(total_data, colWidths=[doc.width * 0.8, doc.width * 0.2])
+            total_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (0, 0), 'RIGHT'),
+                ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+            ]))
+            elements.append(total_table)
+            
+            # Add payments if available
+            if "payments" in invoice and invoice["payments"]:
+                elements.append(Spacer(1, 0.5 * cm))
+                elements.append(Paragraph("Payments:", subtitle_style))
+                
+                payments_data = [["Date", "Method", "Amount"]]
+                
+                for payment in invoice["payments"]:
+                    date_str = payment["payment_date"].strftime("%Y-%m-%d") if payment["payment_date"] else "N/A"
+                    method = payment["payment_method"].replace("_", " ").title()
+                    amount_str = format_currency(payment['amount']) if payment["amount"] is not None else format_currency(0)
+                    
+                    payments_data.append([date_str, method, amount_str])
+                
+                payments_table = Table(payments_data, colWidths=[doc.width * 0.3, doc.width * 0.4, doc.width * 0.3])
+                payments_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+                    ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                    ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
+                ]))
+                
+                elements.append(payments_table)
+            
+            # Footer
+            elements.append(Spacer(1, 1 * cm))
+            elements.append(Paragraph("Thank you for your business!", subtitle_style))
+            
+            # Build PDF
+            doc.build(elements)
+            
+            self.show_success(f"Receipt exported to {filepath}")
+            return filepath
+            
+        except Exception as e:
+            self.show_error(f"Error exporting receipt to PDF: {str(e)}")
+            return None
 
 
 class ProductBrowserView(BaseView):

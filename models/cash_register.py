@@ -113,8 +113,9 @@ class CashRegister(BaseModel):
             if register["status"] == self.STATUS_CLOSED:
                 raise ValueError("Register is already closed")
             
-            # Calculate discrepancy
-            discrepancy = counted_amount - register["current_amount"]
+            # Calculate discrepancy - ensure same type to avoid "unsupported operand type(s) for -" errors
+            # Convert to float to ensure compatibility between decimal.Decimal and float
+            discrepancy = float(counted_amount) - float(register["current_amount"])
             
             # Update register
             now = self.get_timestamp()
@@ -255,8 +256,8 @@ class CashRegister(BaseModel):
         self.db.begin_transaction()
         
         try:
-            # Add to register balance
-            new_balance = register["current_amount"] + amount
+            # Add to register balance - convert to float for type compatibility
+            new_balance = float(register["current_amount"]) + float(amount)
             self.update(register_id, {"current_amount": new_balance, "updated_at": self.get_timestamp()})
             
             # Record transaction
@@ -300,16 +301,16 @@ class CashRegister(BaseModel):
         if register["status"] == self.STATUS_CLOSED:
             raise ValueError("Cannot remove cash from a closed register")
         
-        # Check sufficient funds
-        if register["current_amount"] < amount:
+        # Check sufficient funds - convert to float for type compatibility
+        if float(register["current_amount"]) < float(amount):
             raise ValueError(f"Insufficient funds: Register has {register['current_amount']}, trying to remove {amount}")
         
         # Begin a transaction
         self.db.begin_transaction()
         
         try:
-            # Subtract from register balance
-            new_balance = register["current_amount"] - amount
+            # Subtract from register balance - convert to float for type compatibility
+            new_balance = float(register["current_amount"]) - float(amount)
             self.update(register_id, {"current_amount": new_balance, "updated_at": self.get_timestamp()})
             
             # Record transaction
@@ -373,15 +374,19 @@ class CashRegister(BaseModel):
             # Calculate new amount based on transaction type
             current_amount = register["current_amount"]
             
+            # Convert to float to ensure compatibility between decimal.Decimal and float
+            current_amount_float = float(current_amount)
+            amount_float = float(amount)
+            
             if transaction_type in [self.TRANSACTION_SALE, self.TRANSACTION_DEPOSIT, self.TRANSACTION_DEBT_PAYMENT]:
-                new_amount = current_amount + amount
+                new_amount = current_amount_float + amount_float
             elif transaction_type in [self.TRANSACTION_REFUND, self.TRANSACTION_WITHDRAWAL, self.TRANSACTION_VOID]:
-                new_amount = current_amount - amount
+                new_amount = current_amount_float - amount_float
                 if new_amount < 0:
                     raise ValueError("Register amount cannot be negative")
             else:
                 # For custom types, use the sign of the amount to determine if it's an addition or subtraction
-                new_amount = current_amount + amount
+                new_amount = current_amount_float + amount_float
             
             # Update register amount
             update_query = """
