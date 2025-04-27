@@ -228,13 +228,21 @@ class CustomerView(BaseView):
     
     def _create_info_tab(self):
         """Create the customer information tab."""
-        # Create a scrollable frame for the form
-        container, scrollable_frame = self.create_scrolled_frame(self.info_tab)
-        container.pack(fill=tk.BOTH, expand=True, pady=5)
-        
-        # Form frame
-        form_frame = FormFrame(scrollable_frame)
-        form_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        try:
+            # Create a scrollable frame for the form
+            container, scrollable_frame = self.create_scrolled_frame(self.info_tab)
+            if container and scrollable_frame:
+                container.pack(fill=tk.BOTH, expand=True, pady=5)
+                
+                # Form frame
+                form_frame = FormFrame(scrollable_frame)
+                form_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+            else:
+                self.show_error("Error creating scrollable frame")
+                return
+        except Exception as e:
+            self.show_error(f"Error creating customer information tab: {str(e)}")
+            return
         
         # Basic information section
         form_frame.add_section_header("Basic Information")
@@ -305,134 +313,142 @@ class CustomerView(BaseView):
     
     def _create_invoices_tab(self):
         """Create the customer invoices tab."""
-        # Header and controls
-        header_frame = ttk.Frame(self.invoices_tab, padding=5)
-        header_frame.pack(fill=tk.X)
-        
-        header_label = ttk.Label(
-            header_frame, 
-            text="Customer Invoices", 
-            style="Subheader.TLabel"
-        )
-        header_label.pack(side=tk.LEFT)
-        
-        refresh_button = ttk.Button(
-            header_frame, 
-            text="Refresh", 
-            command=self._refresh_invoices
-        )
-        refresh_button.pack(side=tk.RIGHT)
-        
-        # Invoices list
-        list_frame = ttk.Frame(self.invoices_tab, padding=5)
-        list_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Create a treeview for the invoices
-        self.invoices_tree = ttk.Treeview(
-            list_frame, 
-            columns=("invoice_number", "date", "amount", "status"),
-            show="headings",
-            selectmode="browse"
-        )
-        
-        # Configure columns
-        self.invoices_tree.heading("invoice_number", text="Invoice #")
-        self.invoices_tree.heading("date", text="Date")
-        self.invoices_tree.heading("amount", text="Amount")
-        self.invoices_tree.heading("status", text="Status")
-        
-        self.invoices_tree.column("invoice_number", width=100)
-        self.invoices_tree.column("date", width=150)
-        self.invoices_tree.column("amount", width=100, anchor=tk.E)
-        self.invoices_tree.column("status", width=100, anchor=tk.CENTER)
-        
-        # Add vertical scrollbar
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.invoices_tree.yview)
-        self.invoices_tree.configure(yscrollcommand=scrollbar.set)
-        
-        # Pack the treeview and scrollbar
-        self.invoices_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Info label for no customer selected
-        self.invoices_info_label = ttk.Label(
-            self.invoices_tab, 
-            text="Select a customer to view their invoices", 
-            padding=10
-        )
-        self.invoices_info_label.pack(fill=tk.X)
+        try:
+            # Header and controls
+            header_frame = ttk.Frame(self.invoices_tab, padding=5)
+            header_frame.pack(fill=tk.X)
+            
+            header_label = ttk.Label(
+                header_frame, 
+                text="Customer Invoices", 
+                style="Subheader.TLabel"
+            )
+            header_label.pack(side=tk.LEFT)
+            
+            refresh_button = ttk.Button(
+                header_frame, 
+                text="Refresh", 
+                command=self._refresh_invoices
+            )
+            refresh_button.pack(side=tk.RIGHT)
+            
+            # Invoices list
+            list_frame = ttk.Frame(self.invoices_tab, padding=5)
+            list_frame.pack(fill=tk.BOTH, expand=True)
+            
+            # Create a treeview for the invoices
+            self.invoices_tree = ttk.Treeview(
+                list_frame, 
+                columns=("invoice_number", "date", "amount", "status"),
+                show="headings",
+                selectmode="browse"
+            )
+            
+            # Configure columns
+            self.invoices_tree.heading("invoice_number", text="Invoice #")
+            self.invoices_tree.heading("date", text="Date")
+            self.invoices_tree.heading("amount", text="Amount")
+            self.invoices_tree.heading("status", text="Status")
+            
+            self.invoices_tree.column("invoice_number", width=100)
+            self.invoices_tree.column("date", width=150)
+            self.invoices_tree.column("amount", width=100, anchor=tk.E)
+            self.invoices_tree.column("status", width=100, anchor=tk.CENTER)
+            
+            # Add vertical scrollbar
+            scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.invoices_tree.yview)
+            self.invoices_tree.configure(yscrollcommand=scrollbar.set)
+            
+            # Pack the treeview and scrollbar
+            self.invoices_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            
+            # Info label for no customer selected
+            self.invoices_info_label = ttk.Label(
+                self.invoices_tab, 
+                text="Select a customer to view their invoices", 
+                padding=10
+            )
+            self.invoices_info_label.pack(fill=tk.X)
+            
+        except Exception as e:
+            self.show_error(f"Error creating invoices tab: {str(e)}")
     
     def _create_debts_tab(self):
         """Create the customer debts tab."""
-        # Header and controls
-        header_frame = ttk.Frame(self.debts_tab, padding=5)
-        header_frame.pack(fill=tk.X)
-        
-        header_label = ttk.Label(
-            header_frame, 
-            text="Customer Debts", 
-            style="Subheader.TLabel"
-        )
-        header_label.pack(side=tk.LEFT)
-        
-        refresh_button = ttk.Button(
-            header_frame, 
-            text="Refresh", 
-            command=self._refresh_debts
-        )
-        refresh_button.pack(side=tk.RIGHT)
-        
-        # Debts list
-        list_frame = ttk.Frame(self.debts_tab, padding=5)
-        list_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Create a treeview for the debts
-        self.debts_tree = ttk.Treeview(
-            list_frame, 
-            columns=("date", "description", "amount", "remaining", "status"),
-            show="headings",
-            selectmode="browse"
-        )
-        
-        # Configure columns
-        self.debts_tree.heading("date", text="Date")
-        self.debts_tree.heading("description", text="Description")
-        self.debts_tree.heading("amount", text="Original Amount")
-        self.debts_tree.heading("remaining", text="Remaining")
-        self.debts_tree.heading("status", text="Status")
-        
-        self.debts_tree.column("date", width=100)
-        self.debts_tree.column("description", width=200)
-        self.debts_tree.column("amount", width=100, anchor=tk.E)
-        self.debts_tree.column("remaining", width=100, anchor=tk.E)
-        self.debts_tree.column("status", width=100, anchor=tk.CENTER)
-        
-        # Add vertical scrollbar
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.debts_tree.yview)
-        self.debts_tree.configure(yscrollcommand=scrollbar.set)
-        
-        # Pack the treeview and scrollbar
-        self.debts_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Summary frame
-        summary_frame = ttk.Frame(self.debts_tab, padding=10)
-        summary_frame.pack(fill=tk.X)
-        
-        self.total_debt_label = ttk.Label(
-            summary_frame, 
-            text="Total debt: $0.00", 
-            font=("", 11, "bold")
-        )
-        self.total_debt_label.pack(side=tk.RIGHT)
-        
-        # Info label for no customer selected
-        self.debts_info_label = ttk.Label(
-            self.debts_tab, 
-            text="Select a customer to view their debts", 
-            padding=10
-        )
-        self.debts_info_label.pack(fill=tk.X)
+        try:
+            # Header and controls
+            header_frame = ttk.Frame(self.debts_tab, padding=5)
+            header_frame.pack(fill=tk.X)
+            
+            header_label = ttk.Label(
+                header_frame, 
+                text="Customer Debts", 
+                style="Subheader.TLabel"
+            )
+            header_label.pack(side=tk.LEFT)
+            
+            refresh_button = ttk.Button(
+                header_frame, 
+                text="Refresh", 
+                command=self._refresh_debts
+            )
+            refresh_button.pack(side=tk.RIGHT)
+            
+            # Debts list
+            list_frame = ttk.Frame(self.debts_tab, padding=5)
+            list_frame.pack(fill=tk.BOTH, expand=True)
+            
+            # Create a treeview for the debts
+            self.debts_tree = ttk.Treeview(
+                list_frame, 
+                columns=("date", "description", "amount", "remaining", "status"),
+                show="headings",
+                selectmode="browse"
+            )
+            
+            # Configure columns
+            self.debts_tree.heading("date", text="Date")
+            self.debts_tree.heading("description", text="Description")
+            self.debts_tree.heading("amount", text="Original Amount")
+            self.debts_tree.heading("remaining", text="Remaining")
+            self.debts_tree.heading("status", text="Status")
+            
+            self.debts_tree.column("date", width=100)
+            self.debts_tree.column("description", width=200)
+            self.debts_tree.column("amount", width=100, anchor=tk.E)
+            self.debts_tree.column("remaining", width=100, anchor=tk.E)
+            self.debts_tree.column("status", width=100, anchor=tk.CENTER)
+            
+            # Add vertical scrollbar
+            scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.debts_tree.yview)
+            self.debts_tree.configure(yscrollcommand=scrollbar.set)
+            
+            # Pack the treeview and scrollbar
+            self.debts_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            
+            # Summary frame
+            summary_frame = ttk.Frame(self.debts_tab, padding=10)
+            summary_frame.pack(fill=tk.X)
+            
+            self.total_debt_label = ttk.Label(
+                summary_frame, 
+                text="Total debt: $0.00", 
+                font=("", 11, "bold")
+            )
+            self.total_debt_label.pack(side=tk.RIGHT)
+            
+            # Info label for no customer selected
+            self.debts_info_label = ttk.Label(
+                self.debts_tab, 
+                text="Select a customer to view their debts", 
+                padding=10
+            )
+            self.debts_info_label.pack(fill=tk.X)
+            
+        except Exception as e:
+            self.show_error(f"Error creating debts tab: {str(e)}")
     
     def _refresh_customer_list(self):
         """Refresh the list of customers."""
@@ -468,17 +484,20 @@ class CustomerView(BaseView):
     
     def _on_customer_selected(self, event=None):
         """Handle customer selection in the treeview."""
-        selected_items = self.customer_tree.selection()
-        if not selected_items:
-            return
-        
-        # Get the first selected item
-        customer_id = selected_items[0]
-        
         try:
+            selected_items = self.customer_tree.selection()
+            if not selected_items:
+                return
+            
+            # Get the first selected item
+            customer_id = selected_items[0]
+            if not customer_id:
+                return
+            
             # Get customer details
             customer = self.customer_controller.get_customer_by_id(customer_id)
             if not customer:
+                self.show_warning("Customer details could not be loaded")
                 return
             
             # Store current customer
@@ -526,41 +545,45 @@ class CustomerView(BaseView):
     
     def _create_new_customer(self):
         """Create a new customer."""
-        # Clear current selection
-        self.customer_tree.selection_set([])
-        
-        # Clear form fields
-        self.current_customer = None
-        self.full_name_var.set("")
-        self.email_var.set("")
-        self.phone_var.set("")
-        self.address_text.delete(1.0, tk.END)
-        self.city_var.set("")
-        self.postal_code_var.set("")
-        self.country_var.set("")
-        self.tax_id_var.set("")
-        self.notes_text.delete(1.0, tk.END)
-        self.is_active_var.set(True)
-        
-        # Update header
-        self.detail_header.config(text="New Customer")
-        
-        # Clear invoices and debts
-        for item in self.invoices_tree.get_children():
-            self.invoices_tree.delete(item)
-        
-        for item in self.debts_tree.get_children():
-            self.debts_tree.delete(item)
-        
-        # Show info labels
-        self.invoices_info_label.pack(fill=tk.X)
-        self.debts_info_label.pack(fill=tk.X)
-        
-        # Reset total debt
-        self.total_debt_label.config(text="Total debt: $0.00")
-        
-        # Switch to info tab
-        self.notebook.select(0)
+        try:
+            # Clear current selection
+            self.customer_tree.selection_set([])
+            
+            # Clear form fields
+            self.current_customer = None
+            self.full_name_var.set("")
+            self.email_var.set("")
+            self.phone_var.set("")
+            self.address_text.delete(1.0, tk.END)
+            self.city_var.set("")
+            self.postal_code_var.set("")
+            self.country_var.set("")
+            self.tax_id_var.set("")
+            self.notes_text.delete(1.0, tk.END)
+            self.is_active_var.set(True)
+            
+            # Update header
+            self.detail_header.config(text="New Customer")
+            
+            # Clear invoices and debts
+            for item in self.invoices_tree.get_children():
+                self.invoices_tree.delete(item)
+            
+            for item in self.debts_tree.get_children():
+                self.debts_tree.delete(item)
+            
+            # Show info labels
+            self.invoices_info_label.pack(fill=tk.X)
+            self.debts_info_label.pack(fill=tk.X)
+            
+            # Reset total debt
+            self.total_debt_label.config(text="Total debt: $0.00")
+            
+            # Switch to info tab
+            self.notebook.select(0)
+            
+        except Exception as e:
+            self.show_error(f"Error creating new customer form: {str(e)}")
     
     def _save_customer(self):
         """Save the current customer."""
@@ -628,120 +651,181 @@ class CustomerView(BaseView):
     
     def _cancel_edit(self):
         """Cancel the current edit operation."""
-        # Revert to selected customer or clear if none
-        selected_items = self.customer_tree.selection()
-        if selected_items:
-            self._on_customer_selected()
-        else:
-            self._create_new_customer()
+        try:
+            # Revert to selected customer or clear if none
+            selected_items = self.customer_tree.selection()
+            if selected_items:
+                self._on_customer_selected()
+            else:
+                self._create_new_customer()
+        except Exception as e:
+            self.show_error(f"Error canceling edit: {str(e)}")
     
     def _delete_selected_customer(self):
         """Delete the selected customer."""
-        selected_items = self.customer_tree.selection()
-        if not selected_items:
-            self.show_warning("Please select a customer to delete")
-            return
-        
-        customer_id = selected_items[0]
-        
-        # Get the name for confirmation
-        customer_values = self.customer_tree.item(customer_id, "values")
-        customer_name = customer_values[0]
-        
-        # Confirm deletion
-        confirm = self.show_confirmation(
-            f"Are you sure you want to delete customer '{customer_name}'? "
-            "This will remove all their data, including invoices and debts."
-        )
-        
-        if not confirm:
-            return
-        
         try:
-            # Try to delete
-            result = self.customer_controller.delete_customer(customer_id)
+            selected_items = self.customer_tree.selection()
+            if not selected_items:
+                self.show_warning("Please select a customer to delete")
+                return
             
-            # Refresh and show message
-            self._refresh_customer_list()
-            self._create_new_customer()
+            customer_id = selected_items[0]
             
-            self.show_success("Customer deleted successfully")
+            # Get the name for confirmation
+            customer_values = self.customer_tree.item(customer_id, "values")
+            if not customer_values or len(customer_values) < 1:
+                self.show_warning("Cannot retrieve customer information")
+                return
+                
+            customer_name = customer_values[0]
             
+            # Confirm deletion
+            confirm = self.show_confirmation(
+                f"Are you sure you want to delete customer '{customer_name}'? "
+                "This will remove all their data, including invoices and debts."
+            )
+            
+            if not confirm:
+                return
+            
+            try:
+                # Try to delete
+                result = self.customer_controller.delete_customer(customer_id)
+                
+                # Refresh and show message
+                self._refresh_customer_list()
+                self._create_new_customer()
+                
+                self.show_success("Customer deleted successfully")
+                
+            except Exception as e:
+                self.show_error(f"Error deleting customer: {str(e)}")
+                
         except Exception as e:
-            self.show_error(f"Error deleting customer: {str(e)}")
+            self.show_error(f"Error preparing customer deletion: {str(e)}")
     
     def _refresh_invoices(self):
         """Refresh the list of invoices for the current customer."""
-        # Clear existing items
-        for item in self.invoices_tree.get_children():
-            self.invoices_tree.delete(item)
-        
-        if not self.current_customer:
-            return
-        
         try:
-            # Get invoices for this customer
-            invoices = self.invoice_controller.get_customer_invoices(
-                self.current_customer["customer_id"]
-            )
+            # Clear existing items
+            for item in self.invoices_tree.get_children():
+                self.invoices_tree.delete(item)
             
-            # Add to treeview
-            for invoice in invoices:
-                # Format date
-                date_str = invoice["created_at"].strftime("%Y-%m-%d %H:%M") if invoice["created_at"] else ""
-                
-                # Format amount
-                amount_str = f"${invoice['total_amount']:.2f}" if invoice["total_amount"] is not None else "$0.00"
-                
-                self.invoices_tree.insert(
-                    "", 
-                    "end", 
-                    values=(invoice["invoice_number"], date_str, amount_str, invoice["status"]),
-                    iid=invoice["invoice_id"]
+            if not self.current_customer:
+                return
+            
+            try:
+                # Get invoices for this customer
+                invoices = self.invoice_controller.get_customer_invoices(
+                    self.current_customer["customer_id"]
                 )
                 
+                # Add to treeview
+                for invoice in invoices:
+                    try:
+                        # Format date
+                        date_str = invoice["created_at"].strftime("%Y-%m-%d %H:%M") if invoice["created_at"] else ""
+                        
+                        # Format amount with error handling
+                        amount_str = "$0.00"
+                        if "total_amount" in invoice and invoice["total_amount"] is not None:
+                            amount_str = f"${invoice['total_amount']:.2f}"
+                        
+                        # Add to treeview with error handling
+                        self.invoices_tree.insert(
+                            "", 
+                            "end", 
+                            values=(
+                                invoice.get("invoice_number", ""),
+                                date_str,
+                                amount_str,
+                                invoice.get("status", "")
+                            ),
+                            iid=invoice.get("invoice_id", "")
+                        )
+                        
+                    except Exception as e:
+                        # Skip this invoice if there's an error, but log it
+                        print(f"Error processing invoice: {str(e)}")
+                        continue
+                    
+            except Exception as e:
+                self.show_error(f"Error loading customer invoices: {str(e)}")
+                
         except Exception as e:
-            self.show_error(f"Error loading customer invoices: {str(e)}")
+            self.show_error(f"Error refreshing invoice list: {str(e)}")
     
     def _refresh_debts(self):
         """Refresh the list of debts for the current customer."""
-        # Clear existing items
-        for item in self.debts_tree.get_children():
-            self.debts_tree.delete(item)
-        
-        if not self.current_customer:
-            return
-        
         try:
-            # Get debts for this customer
-            debts = self.debt_controller.get_customer_debts(
-                self.current_customer["customer_id"]
-            )
+            # Clear existing items
+            for item in self.debts_tree.get_children():
+                self.debts_tree.delete(item)
             
-            # Calculate total debt
-            total_debt = sum(debt["remaining_amount"] for debt in debts)
+            if not self.current_customer:
+                return
             
-            # Update total label
-            self.total_debt_label.config(text=f"Total debt: ${total_debt:.2f}")
-            
-            # Add to treeview
-            for debt in debts:
-                # Format date
-                date_str = debt["created_at"].strftime("%Y-%m-%d") if debt["created_at"] else ""
-                
-                # Format amounts
-                amount_str = f"${debt['original_amount']:.2f}" if debt["original_amount"] is not None else "$0.00"
-                remaining_str = f"${debt['remaining_amount']:.2f}" if debt["remaining_amount"] is not None else "$0.00"
-                
-                # Status text
-                status = "Paid" if debt["remaining_amount"] == 0 else "Outstanding"
-                
-                self.debts_tree.insert(
-                    "", 
-                    "end", 
-                    values=(date_str, debt["description"], amount_str, remaining_str, status),
-                    iid=debt["debt_id"]
+            try:
+                # Get debts for this customer
+                debts = self.debt_controller.get_customer_debts(
+                    self.current_customer["customer_id"]
                 )
                 
+                # Calculate total debt with error handling
+                try:
+                    total_debt = sum(debt.get("remaining_amount", 0) or 0 for debt in debts)
+                    # Update total label
+                    self.total_debt_label.config(text=f"Total debt: ${total_debt:.2f}")
+                except Exception as e:
+                    self.total_debt_label.config(text="Total debt: $0.00")
+                    print(f"Error calculating total debt: {str(e)}")
+                
+                # Add to treeview
+                for debt in debts:
+                    try:
+                        # Format date with error handling
+                        date_str = ""
+                        if "created_at" in debt and debt["created_at"]:
+                            try:
+                                date_str = debt["created_at"].strftime("%Y-%m-%d")
+                            except:
+                                date_str = str(debt["created_at"])
+                        
+                        # Format amounts with error handling
+                        amount_str = "$0.00"
+                        if "original_amount" in debt and debt["original_amount"] is not None:
+                            amount_str = f"${debt['original_amount']:.2f}"
+                            
+                        remaining_str = "$0.00"
+                        if "remaining_amount" in debt and debt["remaining_amount"] is not None:
+                            remaining_str = f"${debt['remaining_amount']:.2f}"
+                        
+                        # Status text with error handling
+                        status = "Unknown"
+                        if "remaining_amount" in debt:
+                            remaining = debt["remaining_amount"] or 0
+                            status = "Paid" if remaining == 0 else "Outstanding"
+                        
+                        # Insert with error handling
+                        self.debts_tree.insert(
+                            "", 
+                            "end", 
+                            values=(
+                                date_str, 
+                                debt.get("description", ""), 
+                                amount_str, 
+                                remaining_str, 
+                                status
+                            ),
+                            iid=debt.get("debt_id", "")
+                        )
+                    except Exception as e:
+                        # Skip this debt if there's an error, but log it
+                        print(f"Error processing debt: {str(e)}")
+                        continue
+                    
+            except Exception as e:
+                self.show_error(f"Error loading customer debts: {str(e)}")
+                
         except Exception as e:
-            self.show_error(f"Error loading customer debts: {str(e)}")
+            self.show_error(f"Error refreshing debt list: {str(e)}")

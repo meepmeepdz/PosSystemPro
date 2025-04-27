@@ -4,14 +4,31 @@ Handles PDF and Excel exports for various reports and data.
 """
 
 import os
-import pandas as pd
-import xlsxwriter
 from datetime import datetime
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch, cm
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+
+# Import required libraries with error handling
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+    print("Warning: pandas module not available, Excel export functionality will be limited")
+
+try:
+    import xlsxwriter
+except ImportError:
+    xlsxwriter = None
+    print("Warning: xlsxwriter module not available, Excel export functionality will be limited")
+
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch, cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
+    print("Warning: reportlab modules not available, PDF export functionality will be limited")
 
 # Directory for exports
 EXPORT_DIR = "exports"
@@ -42,50 +59,101 @@ def export_to_excel(data, filename, sheet_name="Data", headers=None):
     
     filepath = os.path.join(EXPORT_DIR, filename)
     
-    # Convert data to DataFrame
-    if data and isinstance(data[0], dict):
-        df = pd.DataFrame(data)
-        if headers:
-            df = df.reindex(columns=headers)
-    else:
-        df = pd.DataFrame(data)
-        if headers:
-            df.columns = headers
+    # Check if pandas and xlsxwriter are available
+    if pd is None or xlsxwriter is None:
+        # Fallback to CSV export if pandas or xlsxwriter is not available
+        import csv
+        if not filename.endswith('.csv'):
+            filename = filename.replace('.xlsx', '.csv')
+            filepath = os.path.join(EXPORT_DIR, filename)
+        
+        with open(filepath, 'w', newline='') as csvfile:
+            # Determine headers
+            if data and isinstance(data[0], dict):
+                if not headers:
+                    headers = list(data[0].keys())
+                writer = csv.DictWriter(csvfile, fieldnames=headers)
+                writer.writeheader()
+                writer.writerows(data)
+            else:
+                writer = csv.writer(csvfile)
+                if headers:
+                    writer.writerow(headers)
+                writer.writerows(data)
+        
+        print(f"Note: Exported as CSV instead of Excel due to missing dependencies: {filepath}")
+        return filepath
     
-    # Create Excel file with XlsxWriter as the engine
-    writer = pd.ExcelWriter(filepath, engine='xlsxwriter')
-    df.to_excel(writer, sheet_name=sheet_name, index=False)
-    
-    # Get workbook and worksheet objects
-    workbook = writer.book
-    worksheet = writer.sheets[sheet_name]
-    
-    # Add formats
-    header_format = workbook.add_format({
-        'bold': True,
-        'text_wrap': True,
-        'valign': 'top',
-        'bg_color': '#D7E4BC',
-        'border': 1
-    })
-    
-    cell_format = workbook.add_format({
-        'border': 1
-    })
-    
-    # Apply formats to header and cells
-    for col_num, value in enumerate(df.columns.values):
-        worksheet.write(0, col_num, value, header_format)
-    
-    # Auto-adjust column width
-    for i, col in enumerate(df.columns):
-        max_len = max([df[col].astype(str).str.len().max(), len(str(col)) + 2])
-        worksheet.set_column(i, i, max_len)
-    
-    # Save the workbook
-    writer.close()
-    
-    return filepath
+    try:
+        # Convert data to DataFrame
+        if data and isinstance(data[0], dict):
+            df = pd.DataFrame(data)
+            if headers:
+                df = df.reindex(columns=headers)
+        else:
+            df = pd.DataFrame(data)
+            if headers:
+                df.columns = headers
+        
+        # Create Excel file with XlsxWriter as the engine
+        writer = pd.ExcelWriter(filepath, engine='xlsxwriter')
+        df.to_excel(writer, sheet_name=sheet_name, index=False)
+        
+        # Get workbook and worksheet objects
+        workbook = writer.book
+        worksheet = writer.sheets[sheet_name]
+        
+        # Add formats
+        header_format = workbook.add_format({
+            'bold': True,
+            'text_wrap': True,
+            'valign': 'top',
+            'bg_color': '#D7E4BC',
+            'border': 1
+        })
+        
+        cell_format = workbook.add_format({
+            'border': 1
+        })
+        
+        # Apply formats to header and cells
+        for col_num, value in enumerate(df.columns.values):
+            worksheet.write(0, col_num, value, header_format)
+        
+        # Auto-adjust column width
+        for i, col in enumerate(df.columns):
+            max_len = max([df[col].astype(str).str.len().max(), len(str(col)) + 2])
+            worksheet.set_column(i, i, max_len)
+        
+        # Save the workbook
+        writer.close()
+        
+        return filepath
+    except Exception as e:
+        # If an error occurs, fallback to CSV
+        print(f"Error exporting to Excel: {str(e)}")
+        print("Falling back to CSV export...")
+        
+        import csv
+        if not filename.endswith('.csv'):
+            filename = filename.replace('.xlsx', '.csv')
+            filepath = os.path.join(EXPORT_DIR, filename)
+        
+        with open(filepath, 'w', newline='') as csvfile:
+            # Determine headers
+            if data and isinstance(data[0], dict):
+                if not headers:
+                    headers = list(data[0].keys())
+                writer = csv.DictWriter(csvfile, fieldnames=headers)
+                writer.writeheader()
+                writer.writerows(data)
+            else:
+                writer = csv.writer(csvfile)
+                if headers:
+                    writer.writerow(headers)
+                writer.writerows(data)
+        
+        return filepath
 
 def export_to_pdf(data, filename, title="Report", headers=None, orientation='portrait'):
     """
@@ -109,93 +177,144 @@ def export_to_pdf(data, filename, title="Report", headers=None, orientation='por
     
     filepath = os.path.join(EXPORT_DIR, filename)
     
-    # Set up PDF document
-    pagesize = landscape(A4) if orientation == 'landscape' else A4
-    doc = SimpleDocTemplate(
-        filepath,
-        pagesize=pagesize,
-        rightMargin=72,
-        leftMargin=72,
-        topMargin=72,
-        bottomMargin=72
-    )
-    
-    # Set up styles
-    styles = getSampleStyleSheet()
-    title_style = styles['Heading1']
-    subtitle_style = styles['Heading2']
-    normal_style = styles['Normal']
-    
-    # Date style
-    date_style = ParagraphStyle(
-        'DateStyle',
-        parent=styles['Normal'],
-        fontSize=9,
-        textColor=colors.gray
-    )
-    
-    # Create document content
-    content = []
-    
-    # Add title
-    content.append(Paragraph(title, title_style))
-    content.append(Spacer(1, 0.5 * cm))
-    
-    # Add date
-    date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    content.append(Paragraph(f"Generated on: {date_str}", date_style))
-    content.append(Spacer(1, 0.5 * cm))
-    
-    # Prepare table data
-    table_data = []
-    
-    # Process data
-    if data and isinstance(data[0], dict):
-        # If data is a list of dictionaries
-        if not headers:
-            headers = list(data[0].keys())
+    # Check if reportlab is available
+    if not REPORTLAB_AVAILABLE:
+        # Fallback to CSV if reportlab is not available
+        import csv
+        if not filename.endswith('.csv'):
+            filename = filename.replace('.pdf', '.csv')
+            filepath = os.path.join(EXPORT_DIR, filename)
         
-        table_data.append(headers)
-        for item in data:
-            row = [item.get(h, '') for h in headers]
-            table_data.append(row)
-    else:
-        # If data is a list of lists
-        if headers:
+        with open(filepath, 'w', newline='') as csvfile:
+            # Determine headers
+            if data and isinstance(data[0], dict):
+                if not headers:
+                    headers = list(data[0].keys())
+                writer = csv.DictWriter(csvfile, fieldnames=headers)
+                writer.writeheader()
+                writer.writerows(data)
+            else:
+                writer = csv.writer(csvfile)
+                if headers:
+                    writer.writerow(headers)
+                writer.writerows(data)
+        
+        print(f"Note: Exported as CSV instead of PDF due to missing ReportLab dependency: {filepath}")
+        return filepath
+    
+    try:
+        # Set up PDF document
+        pagesize = landscape(A4) if orientation == 'landscape' else A4
+        doc = SimpleDocTemplate(
+            filepath,
+            pagesize=pagesize,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72
+        )
+        
+        # Set up styles
+        styles = getSampleStyleSheet()
+        title_style = styles['Heading1']
+        subtitle_style = styles['Heading2']
+        normal_style = styles['Normal']
+        
+        # Date style
+        date_style = ParagraphStyle(
+            'DateStyle',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.gray
+        )
+        
+        # Create document content
+        content = []
+        
+        # Add title
+        content.append(Paragraph(title, title_style))
+        content.append(Spacer(1, 0.5 * cm))
+        
+        # Add date
+        date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        content.append(Paragraph(f"Generated on: {date_str}", date_style))
+        content.append(Spacer(1, 0.5 * cm))
+        
+        # Prepare table data
+        table_data = []
+        
+        # Process data
+        if data and isinstance(data[0], dict):
+            # If data is a list of dictionaries
+            if not headers:
+                headers = list(data[0].keys())
+            
             table_data.append(headers)
-        table_data.extend(data)
-    
-    # Create table
-    if table_data:
-        table = Table(table_data)
+            for item in data:
+                row = [item.get(h, '') for h in headers]
+                table_data.append(row)
+        else:
+            # If data is a list of lists
+            if headers:
+                table_data.append(headers)
+            table_data.extend(data)
         
-        # Style the table
-        style = TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-            ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ])
+        # Create table
+        if table_data:
+            table = Table(table_data)
+            
+            # Style the table
+            style = TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ])
+            
+            # Apply style to table
+            table.setStyle(style)
+            
+            # Add table to content
+            content.append(table)
         
-        # Apply style to table
-        table.setStyle(style)
+        # Build PDF
+        doc.build(content)
         
-        # Add table to content
-        content.append(table)
-    
-    # Build PDF
-    doc.build(content)
-    
-    return filepath
+        return filepath
+    except Exception as e:
+        # If an error occurs, fallback to CSV
+        print(f"Error exporting to PDF: {str(e)}")
+        print("Falling back to CSV export...")
+        
+        import csv
+        if not filename.endswith('.csv'):
+            filename = filename.replace('.pdf', '.csv')
+            filepath = os.path.join(EXPORT_DIR, filename)
+        
+        with open(filepath, 'w', newline='') as csvfile:
+            # Determine headers
+            if data and isinstance(data[0], dict):
+                if not headers:
+                    headers = list(data[0].keys())
+                writer = csv.DictWriter(csvfile, fieldnames=headers)
+                writer.writeheader()
+                writer.writerows(data)
+            else:
+                writer = csv.writer(csvfile)
+                if headers:
+                    writer.writerow(headers)
+                writer.writerows(data)
+        
+        return filepath
 
 # Function to format currency values for display
 def format_currency(value):

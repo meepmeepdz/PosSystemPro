@@ -236,8 +236,13 @@ def main():
         traceback.print_exc()
         return False
     finally:
-        if 'db' in locals():
-            db.close()
+        # Ensure db exists and is properly closed
+        db_var = locals().get('db')
+        if db_var is not None:
+            try:
+                db_var.close()
+            except Exception as close_error:
+                print(f"Warning: Error closing database connection: {str(close_error)}")
 
 if __name__ == "__main__":
     success = main()

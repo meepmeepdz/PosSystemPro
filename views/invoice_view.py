@@ -1412,7 +1412,16 @@ class InvoiceView(BaseView):
             # This would normally use the OS print dialog or a direct printer API
             # For now, we'll export to PDF and show a message
             if self.show_confirmation("Would you like to export the receipt to PDF before printing?"):
-                invoice_id = self.current_invoice["invoice_id"]
+                # Check if current_invoice is None before accessing it
+                if self.current_invoice is None:
+                    self.show_error("No invoice selected")
+                    return
+                    
+                invoice_id = self.current_invoice.get("invoice_id")
+                if not invoice_id:
+                    self.show_error("Invalid invoice ID")
+                    return
+                    
                 pdf_path = self._export_receipt_to_pdf(invoice_id)
                 if pdf_path:
                     self.show_success(f"Receipt exported to {pdf_path}\nYou can now print it using your PDF viewer.")
@@ -1438,11 +1447,16 @@ class InvoiceView(BaseView):
                 return None
                 
             # Import necessary modules for PDF generation
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-            from reportlab.lib.pagesizes import A4
-            from reportlab.lib import colors
-            from reportlab.lib.styles import getSampleStyleSheet
-            from reportlab.lib.units import cm, mm
+            try:
+                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+                from reportlab.lib.pagesizes import A4
+                from reportlab.lib import colors
+                from reportlab.lib.styles import getSampleStyleSheet
+                from reportlab.lib.units import cm, mm
+                REPORTLAB_AVAILABLE = True
+            except ImportError:
+                REPORTLAB_AVAILABLE = False
+                print("Warning: reportlab modules not available, PDF generation functionality will be limited")
             
             # Import company details
             from config import COMPANY_NAME, COMPANY_ADDRESS, COMPANY_PHONE, COMPANY_TAX_ID
@@ -1460,7 +1474,76 @@ class InvoiceView(BaseView):
             filename = f"invoice_{invoice['invoice_number']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
             filepath = os.path.join(EXPORT_DIR, filename)
             
-            # Create the PDF document
+            # Check if reportlab is available
+            if not REPORTLAB_AVAILABLE:
+                import csv
+                
+                # Fallback to CSV if reportlab is not available
+                filename = filename.replace('.pdf', '.csv')
+                filepath = os.path.join(EXPORT_DIR, filename)
+                
+                with open(filepath, 'w', newline='') as csvfile:
+                    writer = csv.writer(csvfile)
+                    
+                    # Write header information
+                    writer.writerow([COMPANY_NAME])
+                    writer.writerow([COMPANY_ADDRESS])
+                    writer.writerow([f"Phone: {COMPANY_PHONE}"])
+                    writer.writerow([f"Tax ID: {COMPANY_TAX_ID}"])
+                    writer.writerow([])
+                    
+                    # Write invoice details
+                    writer.writerow([f"Invoice #{invoice['invoice_number']}"])
+                    date_str = invoice["created_at"].strftime("%Y-%m-%d %H:%M") if invoice["created_at"] else "N/A"
+                    writer.writerow([f"Date: {date_str}"])
+                    
+                    if invoice["customer_name"]:
+                        writer.writerow([f"Customer: {invoice['customer_name']}"])
+                    
+                    writer.writerow([])
+                    
+                    # Write items
+                    if "items" in invoice and invoice["items"]:
+                        writer.writerow(["Item", "Qty", "Price", "Total"])
+                        
+                        for item in invoice["items"]:
+                            price = item["discount_price"] if item["discount_price"] is not None else item["unit_price"]
+                            price_str = format_currency(price) if price is not None else format_currency(0)
+                            total = format_currency(item['subtotal']) if item["subtotal"] is not None else format_currency(0)
+                            
+                            writer.writerow([
+                                item["product_name"],
+                                str(item["quantity"]),
+                                price_str,
+                                total
+                            ])
+                    
+                    writer.writerow([])
+                    
+                    # Write total
+                    total_str = format_currency(invoice['total_amount']) if invoice["total_amount"] is not None else format_currency(0)
+                    writer.writerow(["Total:", total_str])
+                    
+                    # Write payments
+                    if "payments" in invoice and invoice["payments"]:
+                        writer.writerow([])
+                        writer.writerow(["Payments:"])
+                        writer.writerow(["Date", "Method", "Amount"])
+                        
+                        for payment in invoice["payments"]:
+                            date_str = payment["payment_date"].strftime("%Y-%m-%d") if payment["payment_date"] else "N/A"
+                            method = payment["payment_method"].replace("_", " ").title()
+                            amount_str = format_currency(payment['amount']) if payment["amount"] is not None else format_currency(0)
+                            
+                            writer.writerow([date_str, method, amount_str])
+                    
+                    writer.writerow([])
+                    writer.writerow(["Thank you for your business!"])
+                
+                self.show_success(f"Receipt exported to CSV (PDF generation not available): {filepath}")
+                return filepath
+            
+            # If reportlab is available, create the PDF document
             doc = SimpleDocTemplate(
                 filepath,
                 pagesize=A4,

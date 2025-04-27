@@ -122,11 +122,14 @@ class MessageBox:
         entry.pack(fill=tk.X, pady=(0, 15))
         entry.focus_set()
         
-        # Store the result
-        return_value = {"value": None}
+        # Store the result - initialize as a dictionary with a mutable value
+        # This avoids the type error when assigning a value later
+        return_value = {}
+        return_value["value"] = None
         
         # OK/Cancel buttons
         def on_ok():
+            # Store the string result
             return_value["value"] = result.get()
             dialog.destroy()
             

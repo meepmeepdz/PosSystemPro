@@ -35,12 +35,19 @@ def main():
         timestamp = user_model.get_timestamp()
         
         # Hash password manually
-        import bcrypt
-        password = "admin123"
-        if isinstance(password, str):
-            password = password.encode('utf-8')
-        salt = bcrypt.gensalt()
-        password_hash = bcrypt.hashpw(password, salt).decode('utf-8')
+        try:
+            import bcrypt
+            password = "admin123"
+            if isinstance(password, str):
+                password = password.encode('utf-8')
+            salt = bcrypt.gensalt()
+            password_hash = bcrypt.hashpw(password, salt).decode('utf-8')
+        except ImportError:
+            # Fallback to a basic hash if bcrypt is not available
+            print("Warning: bcrypt not available, using basic hashing (not secure for production)")
+            import hashlib
+            password = "admin123"
+            password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
         
         # Insert user directly
         query = """
@@ -76,8 +83,13 @@ def main():
         traceback.print_exc()
         return False
     finally:
-        if 'db' in locals():
-            db.close()
+        # Ensure db exists and is properly closed
+        db_var = locals().get('db')
+        if db_var is not None:
+            try:
+                db_var.close()
+            except Exception as close_error:
+                print(f"Warning: Error closing database connection: {str(close_error)}")
 
 if __name__ == "__main__":
     success = main()

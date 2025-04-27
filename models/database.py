@@ -77,6 +77,9 @@ class Database:
             connection: Database connection
         """
         if not self.connection:
+            # Check if connection pool exists
+            if not self.connection_pool:
+                raise ValueError("Database connection pool is not initialized")
             self.connection = self.connection_pool.getconn()
         
         return self.connection
@@ -99,8 +102,9 @@ class Database:
             self.cursor = None
         
         if self.connection:
-            # Return connection to pool
-            self.connection_pool.putconn(self.connection)
+            # Return connection to pool if connection pool exists
+            if self.connection_pool:
+                self.connection_pool.putconn(self.connection)
             self.connection = None
     
     def execute(self, query, params=None):
@@ -117,8 +121,11 @@ class Database:
         cursor.execute(query, params or ())
         
         # If not in transaction, commit immediately
-        if not self.in_transaction:
-            self.connection.commit()
+        if not self.in_transaction and self.connection:
+            try:
+                self.connection.commit()
+            except Exception as e:
+                print(f"Error committing transaction: {str(e)}")
             
         return cursor.rowcount
     

@@ -385,17 +385,31 @@ class UserView(BaseView):
             
             # If editing self, disable role and status changes
             if is_self:
-                role_combobox = self.user_detail_frame.winfo_children()[1].winfo_children()[9].winfo_children()[1]
-                status_check = self.user_detail_frame.winfo_children()[1].winfo_children()[11].winfo_children()[1]
-                
-                role_combobox.config(state="disabled")
-                status_check.config(state="disabled")
+                try:
+                    # Use safer approach to find and update widget states
+                    for child in self.user_detail_frame.winfo_children():
+                        for grandchild in child.winfo_children():
+                            if isinstance(grandchild, ttk.Combobox) and grandchild.cget("textvariable") == str(self.role_var):
+                                grandchild["state"] = "disabled"
+                            elif isinstance(grandchild, ttk.Checkbutton):
+                                # Assume this is the status checkbutton
+                                grandchild["state"] = "disabled"
+                except Exception:
+                    # Fallback: Directly set variables to disable changes
+                    self.role_var.set(user.get("role", "USER"))
+                    self.is_active_var.set(bool(user.get("is_active", True)))
             else:
-                role_combobox = self.user_detail_frame.winfo_children()[1].winfo_children()[9].winfo_children()[1]
-                status_check = self.user_detail_frame.winfo_children()[1].winfo_children()[11].winfo_children()[1]
-                
-                role_combobox.config(state="readonly")
-                status_check.config(state="normal")
+                try:
+                    # Re-enable for other users
+                    for child in self.user_detail_frame.winfo_children():
+                        for grandchild in child.winfo_children():
+                            if isinstance(grandchild, ttk.Combobox) and grandchild.cget("textvariable") == str(self.role_var):
+                                grandchild["state"] = "readonly"
+                            elif isinstance(grandchild, ttk.Checkbutton):
+                                # Assume this is the status checkbutton
+                                grandchild["state"] = "normal"
+                except Exception:
+                    pass  # If we can't find the widgets, just continue
             
         except Exception as e:
             self.show_error(f"Error loading user details: {str(e)}")
@@ -423,11 +437,18 @@ class UserView(BaseView):
         self.password_fields_frame.pack(fill=tk.X, pady=5)
         
         # Enable all fields
-        role_combobox = self.user_detail_frame.winfo_children()[1].winfo_children()[9].winfo_children()[1]
-        status_check = self.user_detail_frame.winfo_children()[1].winfo_children()[11].winfo_children()[1]
-        
-        role_combobox.config(state="readonly")
-        status_check.config(state="normal")
+        try:
+            # Use safer approach to find and update widget states
+            for child in self.user_detail_frame.winfo_children():
+                for grandchild in child.winfo_children():
+                    if isinstance(grandchild, ttk.Combobox) and grandchild.cget("textvariable") == str(self.role_var):
+                        grandchild["state"] = "readonly"
+                    elif isinstance(grandchild, ttk.Checkbutton):
+                        # Assume this is the status checkbutton
+                        grandchild["state"] = "normal"
+        except Exception:
+            # Fallback - the variables will be usable even if we can't update widget states
+            pass
     
     def _save_user(self):
         """Save the current user."""
