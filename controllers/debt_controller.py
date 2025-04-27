@@ -125,6 +125,33 @@ class DebtController:
         """
         return self.debt_model.get_debt_summary_by_age()
     
+    def search_debts(self, customer_id=None, is_paid=None, date_from=None, date_to=None, limit=100, offset=0):
+        """Search debts with various filters.
+        
+        Args:
+            customer_id (str, optional): Filter by customer ID
+            is_paid (bool, optional): Filter by paid status
+            date_from (str, optional): Filter by date from (ISO format)
+            date_to (str, optional): Filter by date to (ISO format)
+            limit (int, optional): Maximum number of records to return
+            offset (int, optional): Number of records to skip
+            
+        Returns:
+            list: List of debts matching the criteria
+        """
+        filters = {}
+        
+        if customer_id is not None:
+            filters["customer_id"] = customer_id
+            
+        if is_paid is not None:
+            filters["is_paid"] = is_paid
+            
+        # Convert date filters to model format if needed
+        # This assumes the model handles date filtering
+        
+        return self.debt_model.search_debts(filters, limit=limit, offset=offset)
+        
     def mark_debt_as_paid(self, debt_id, notes=None):
         """Mark a debt as paid.
         

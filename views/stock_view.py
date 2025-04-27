@@ -359,7 +359,7 @@ class StockView(BaseView):
             # Get stock levels for all products or filtered products
             products = self.product_controller.search_products(
                 search_term=search_term if search_term else None,
-                include_inactive=show_inactive
+                is_active=None if show_inactive else True
             )
             
             # Add to treeview
@@ -648,7 +648,8 @@ class StockView(BaseView):
         """Export stock data to CSV file."""
         try:
             # Get all products with stock levels
-            products = self.product_controller.get_all_products(include_inactive=self.show_inactive_var.get())
+            is_active = None if self.show_inactive_var.get() else True
+            products = self.product_controller.search_products(is_active=is_active)
             
             # Get stock levels
             stock_data = []

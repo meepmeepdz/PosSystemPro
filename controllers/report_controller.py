@@ -16,6 +16,92 @@ class ReportController:
             db: Database connection instance
         """
         self.db = db
+        
+    def get_sales_summary(self, date_from=None, date_to=None, user_id=None):
+        """Get a sales summary report.
+        
+        Args:
+            date_from (str or datetime, optional): Start date
+            date_to (str or datetime, optional): End date
+            user_id (str, optional): Filter by user ID
+            
+        Returns:
+            dict: Sales summary data with daily/weekly/monthly breakdowns
+        """
+        # Convert datetime objects to ISO format strings if needed
+        if hasattr(date_from, 'isoformat'):
+            date_from = date_from.isoformat()
+        if hasattr(date_to, 'isoformat'):
+            date_to = date_to.isoformat()
+            
+        # Query to get daily sales
+        daily_query = """
+            SELECT 
+                DATE_TRUNC('day', i.created_at)::date as period,
+                COUNT(i.invoice_id) as invoice_count,
+                SUM(i.total_amount) as total_amount
+            FROM invoices i
+            WHERE i.status = 'COMPLETED'
+        """
+        params = []
+        
+        # Add date filters
+        if date_from:
+            daily_query += " AND i.created_at >= %s"
+            params.append(date_from)
+        
+        if date_to:
+            daily_query += " AND i.created_at <= %s"
+            params.append(date_to)
+        
+        # Add user filter
+        if user_id:
+            daily_query += " AND i.user_id = %s"
+            params.append(user_id)
+        
+        # Group and order
+        daily_query += " GROUP BY period ORDER BY period"
+        
+        # Execute query
+        daily_data = self.db.fetch_all(daily_query, tuple(params))
+        
+        # Get summary totals
+        summary_query = """
+            SELECT 
+                COUNT(i.invoice_id) as total_invoices,
+                SUM(i.total_amount) as total_sales,
+                ROUND(AVG(i.total_amount), 2) as average_sale,
+                COUNT(DISTINCT i.customer_id) as unique_customers,
+                COUNT(DISTINCT i.user_id) as unique_sellers,
+                MAX(i.total_amount) as highest_sale,
+                MIN(i.total_amount) as lowest_sale
+            FROM invoices i
+            WHERE i.status = 'COMPLETED'
+        """
+        
+        # Add the same filters
+        summary_params = []
+        
+        if date_from:
+            summary_query += " AND i.created_at >= %s"
+            summary_params.append(date_from)
+        
+        if date_to:
+            summary_query += " AND i.created_at <= %s"
+            summary_params.append(date_to)
+        
+        if user_id:
+            summary_query += " AND i.user_id = %s"
+            summary_params.append(user_id)
+        
+        # Execute summary query
+        summary = self.db.fetch_one(summary_query, tuple(summary_params))
+        
+        # Return combined results
+        return {
+            "data": daily_data,
+            "summary": summary or {}
+        }
     
     def get_sales_report(self, date_from=None, date_to=None, user_id=None, customer_id=None):
         """Get a sales report for a period.

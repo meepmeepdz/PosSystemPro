@@ -297,6 +297,64 @@ class Payment(BaseModel):
             self.db.rollback_transaction()
             raise e
     
+    def search_payments(self, filters=None, date_from=None, date_to=None, limit=100, offset=0):
+        """Search payments with various filters.
+        
+        Args:
+            filters (dict, optional): Dictionary of filters to apply
+            date_from (str, optional): Start date in ISO format
+            date_to (str, optional): End date in ISO format
+            limit (int, optional): Maximum number of records to return
+            offset (int, optional): Number of records to skip
+            
+        Returns:
+            list: List of payments matching the criteria
+        """
+        query = """
+            SELECT p.*,
+                   u.username as user_name,
+                   i.invoice_number,
+                   c.full_name as customer_name
+            FROM payments p
+            JOIN users u ON p.user_id = u.user_id
+            JOIN invoices i ON p.invoice_id = i.invoice_id
+            LEFT JOIN customers c ON i.customer_id = c.customer_id
+            WHERE 1=1
+        """
+        params = []
+        
+        # Apply date filters
+        if date_from:
+            query += " AND p.payment_date >= %s"
+            params.append(date_from)
+        
+        if date_to:
+            query += " AND p.payment_date <= %s"
+            params.append(date_to)
+        
+        # Apply other filters
+        if filters:
+            if "payment_method" in filters:
+                query += " AND p.payment_method = %s"
+                params.append(filters["payment_method"])
+            
+            if "invoice_id" in filters:
+                query += " AND p.invoice_id = %s"
+                params.append(filters["invoice_id"])
+            
+            if "user_id" in filters:
+                query += " AND p.user_id = %s"
+                params.append(filters["user_id"])
+        
+        # Add ORDER BY clause
+        query += " ORDER BY p.payment_date DESC"
+        
+        # Add LIMIT and OFFSET
+        query += " LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        
+        return self.db.fetch_all(query, tuple(params))
+        
     def get_payment_methods_report(self, date_from=None, date_to=None, user_id=None):
         """Get a report of payments by method.
         

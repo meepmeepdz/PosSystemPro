@@ -104,6 +104,36 @@ class PaymentController:
         """
         return self.payment_model.get_payment_methods_report(date_from, date_to, user_id)
     
+    def search_payments(self, date_from=None, date_to=None, payment_method=None, invoice_id=None, user_id=None, limit=100, offset=0):
+        """Search payments with various filters.
+        
+        Args:
+            date_from (str, optional): Start date in ISO format
+            date_to (str, optional): End date in ISO format
+            payment_method (str, optional): Filter by payment method
+            invoice_id (str, optional): Filter by invoice ID
+            user_id (str, optional): Filter by user ID
+            limit (int, optional): Maximum number of records to return
+            offset (int, optional): Number of records to skip
+            
+        Returns:
+            list: List of payments matching the criteria
+        """
+        filters = {}
+        
+        # Add filters based on parameters
+        if payment_method and payment_method != "All Methods":
+            filters["payment_method"] = payment_method
+            
+        if invoice_id:
+            filters["invoice_id"] = invoice_id
+            
+        if user_id:
+            filters["user_id"] = user_id
+            
+        # Pass date filters to model
+        return self.payment_model.search_payments(filters, date_from, date_to, limit, offset)
+
     def get_payment_methods(self):
         """Get valid payment methods.
         

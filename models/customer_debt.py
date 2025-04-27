@@ -317,6 +317,54 @@ class CustomerDebt(BaseModel):
         
         return self.db.fetch_all(query, (limit, offset))
     
+    def search_debts(self, filters=None, limit=100, offset=0):
+        """Search debts with various filters.
+        
+        Args:
+            filters (dict, optional): Dictionary of filters to apply
+            limit (int, optional): Maximum number of records to return
+            offset (int, optional): Number of records to skip
+            
+        Returns:
+            list: List of debts matching the criteria
+        """
+        # Build query
+        query = """
+            SELECT cd.*, 
+                   c.full_name as customer_name,
+                   c.phone as customer_phone,
+                   i.invoice_number,
+                   i.created_at as invoice_date,
+                   (cd.amount - cd.amount_paid) as remaining_amount,
+                   EXTRACT(DAY FROM (NOW() - cd.created_at)) as days_outstanding,
+                   u.username as created_by_name
+            FROM customer_debts cd
+            JOIN customers c ON cd.customer_id = c.customer_id
+            JOIN invoices i ON cd.invoice_id = i.invoice_id
+            LEFT JOIN users u ON cd.created_by = u.user_id
+            WHERE 1=1
+        """
+        params = []
+        
+        # Apply filters
+        if filters:
+            if "customer_id" in filters:
+                query += " AND cd.customer_id = %s"
+                params.append(filters["customer_id"])
+            
+            if "is_paid" in filters:
+                query += " AND cd.is_paid = %s"
+                params.append(filters["is_paid"])
+        
+        # Add ORDER BY clause
+        query += " ORDER BY cd.created_at DESC"
+        
+        # Add LIMIT and OFFSET clauses
+        query += " LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        
+        return self.db.fetch_all(query, tuple(params))
+        
     def get_debt_summary_by_age(self):
         """Get a summary of outstanding debts by age.
         
