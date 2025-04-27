@@ -28,6 +28,35 @@ class CategoryController:
             list: List of categories
         """
         return self.category_model.get_all(order_by=order_by)
+        
+    def search_categories(self, search_term=None, include_inactive=False):
+        """Search categories by name or description.
+        
+        Args:
+            search_term (str, optional): Search term for name or description
+            include_inactive (bool, optional): Whether to include inactive categories
+            
+        Returns:
+            list: List of matching categories
+        """
+        # Use get_all if no search term
+        if not search_term:
+            categories = self.get_all_categories()
+        else:
+            # Execute search query
+            query = """
+                SELECT * FROM categories
+                WHERE (name ILIKE %s OR description ILIKE %s)
+                ORDER BY name
+            """
+            search_pattern = f"%{search_term}%"
+            categories = self.db.fetch_all(query, (search_pattern, search_pattern))
+            
+        # Filter for active status if needed
+        if not include_inactive:
+            categories = [c for c in categories if c.get("is_active", True)]
+            
+        return categories
     
     def get_category_by_id(self, category_id):
         """Get a category by ID.
@@ -122,3 +151,16 @@ class CategoryController:
             list: Subcategories
         """
         return self.category_model.get_where("parent_id = %s", (parent_id,), order_by="name")
+        
+    def get_product_count(self, category_id):
+        """Get the number of products in a category.
+        
+        Args:
+            category_id (str): Category ID
+            
+        Returns:
+            int: Number of products in the category
+        """
+        query = "SELECT COUNT(*) as count FROM products WHERE category_id = %s"
+        result = self.db.fetch_one(query, (category_id,))
+        return result["count"] if result else 0

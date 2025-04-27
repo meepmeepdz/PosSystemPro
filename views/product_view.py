@@ -241,8 +241,8 @@ class ProductView(BaseView):
         category_frame = ttk.Frame(form_frame)
         category_frame.pack(fill=tk.X, pady=(0, 10))
         
-        category_label = ttk.Label(category_frame, text="Category:")
-        category_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        category_label = ttk.Label(category_frame, text="Category:", width=15)
+        category_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         self.product_category_combobox = ttk.Combobox(
             category_frame, 
@@ -285,8 +285,8 @@ class ProductView(BaseView):
         is_active_frame = ttk.Frame(form_frame)
         is_active_frame.pack(fill=tk.X, pady=5)
         
-        is_active_label = ttk.Label(is_active_frame, text="Active:")
-        is_active_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        is_active_label = ttk.Label(is_active_frame, text="Active:", width=15)
+        is_active_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         is_active_check = ttk.Checkbutton(is_active_frame, variable=self.is_active_var)
         is_active_check.pack(side=tk.LEFT)

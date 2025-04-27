@@ -297,8 +297,8 @@ class CustomerView(BaseView):
         is_active_frame = ttk.Frame(form_frame)
         is_active_frame.pack(fill=tk.X, pady=5)
         
-        is_active_label = ttk.Label(is_active_frame, text="Active:")
-        is_active_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        is_active_label = ttk.Label(is_active_frame, text="Active:", width=15)
+        is_active_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         is_active_check = ttk.Checkbutton(is_active_frame, variable=self.is_active_var)
         is_active_check.pack(side=tk.LEFT)
