@@ -336,7 +336,10 @@ class CategoryView(BaseView):
                 success_message = "Category updated successfully"
             else:
                 # Create new category
-                result = self.category_controller.create_category(category_data)
+                result = self.category_controller.create_category(
+                    name=category_data["name"],
+                    description=category_data["description"] if category_data["description"] else None
+                )
                 success_message = "Category created successfully"
             
             # Refresh list and show success message

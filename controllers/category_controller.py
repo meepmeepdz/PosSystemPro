@@ -18,16 +18,23 @@ class CategoryController:
         self.db = db
         self.category_model = Category(db)
     
-    def get_all_categories(self, order_by="name"):
+    def get_all_categories(self, order_by="name", include_inactive=True):
         """Get all categories.
         
         Args:
             order_by (str, optional): Column to order by
+            include_inactive (bool, optional): Whether to include inactive categories
             
         Returns:
             list: List of categories
         """
-        return self.category_model.get_all(order_by=order_by)
+        categories = self.category_model.get_all(order_by=order_by)
+        
+        # Filter out inactive categories if needed
+        if not include_inactive:
+            categories = [c for c in categories if c.get("is_active", True)]
+            
+        return categories
         
     def search_categories(self, search_term=None, include_inactive=False):
         """Search categories by name or description.
@@ -41,7 +48,7 @@ class CategoryController:
         """
         # Use get_all if no search term
         if not search_term:
-            categories = self.get_all_categories()
+            categories = self.get_all_categories(include_inactive=include_inactive)
         else:
             # Execute search query
             query = """

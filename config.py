@@ -15,7 +15,7 @@ DB_HOST = os.environ.get("PGHOST", "localhost")
 DB_PORT = os.environ.get("PGPORT", "5432")
 DB_NAME = os.environ.get("PGDATABASE", "pos_db")
 DB_USER = os.environ.get("PGUSER", "postgres")
-DB_PASSWORD = os.environ.get("PGPASSWORD", "")
+DB_PASSWORD = os.environ.get("PGPASSWORD", "postgres")
 DB_URL = os.environ.get("DATABASE_URL", f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 # UI settings

@@ -33,7 +33,7 @@ class Database:
         db_port = os.environ.get("PGPORT", "5432")
         db_name = os.environ.get("PGDATABASE", "pos_db")
         db_user = os.environ.get("PGUSER", "postgres")
-        db_password = os.environ.get("PGPASSWORD", "")
+        db_password = os.environ.get("PGPASSWORD", "postgres")
         
         # Create connection pool
         try:

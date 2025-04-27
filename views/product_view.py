@@ -355,7 +355,7 @@ class ProductView(BaseView):
             products = self.product_controller.search_products(
                 search_term=search_term if search_term else None,
                 category_id=category_id,
-                include_inactive=include_inactive
+                is_active=None if include_inactive else True
             )
             
             # Get stock levels
@@ -541,7 +541,18 @@ class ProductView(BaseView):
                 success_message = "Product updated successfully"
             else:
                 # Create new product
-                result = self.product_controller.create_product(product_data)
+                result = self.product_controller.create_product(
+                    name=product_data["name"],
+                    sku=product_data["sku"] or "",
+                    barcode=product_data["barcode"] or "",
+                    category_id=product_data["category_id"] or "",
+                    purchase_price=product_data["cost_price"],
+                    selling_price=product_data["selling_price"],
+                    description=product_data["description"],
+                    tax_rate=0.0,  # Valeur par défaut
+                    low_stock_threshold=product_data["min_stock_level"],
+                    is_active=product_data["is_active"]
+                )
                 success_message = "Product created successfully"
                 
                 # Set initial stock level to 0 if it's a new product
