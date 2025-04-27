@@ -1,0 +1,176 @@
+Contexte
+Développez une application complète de point de vente (POS) en utilisant Python 3.x et Tkinter comme interface graphique, avec PostgreSQL comme base de données, suivant strictement l'architecture MVC (Modèle-Vue-Contrôleur).
+
+Priorités Absolues
+PRIORITÉ N°1 : Logique métier complète et fonctionnelle avant tout
+
+INTERFACE : Tkinter uniquement (aucun web, aucune console)
+
+Architecture MVC (strict)
+Modèles : Accès PostgreSQL + Validation + Règles métier
+
+Vues : Interfaces Tkinter (formulaires, tableaux, graphiques, alertes)
+
+Contrôleurs : Événements, traitements, appels aux modèles, mise à jour des vues
+
+Fonctionnalités attendues
+Gestion des utilisateurs (vendeurs)
+CRUD complet des utilisateurs
+
+Authentification sécurisée avec rôles (Admin, Gérant, Vendeur)
+
+Suivi des ventes et statistiques par vendeur
+
+Gestion des clients
+Ajout, modification, suppression, consultation
+
+Historique d'achats par client
+
+Gestion des produits
+CRUD produits
+
+Code-barres pour lecture rapide
+
+SKU unique obligatoire
+
+Recherche produits par code-barres, SKU, nom, ou catégorie
+
+Association produit-catégorie
+
+Gestion des stocks
+Suivi des niveaux de stock pour chaque produit
+
+Alerte automatique de seuil bas de stock
+
+Mise à jour du stock à chaque vente
+
+Historique des mouvements de stock (entrées, sorties, ajustements)
+
+Gestion des catégories de produits
+CRUD complet pour les catégories
+
+Association produits ↔ catégories
+
+Gestion des factures
+Création, modification, annulation de factures
+
+Numérotation automatique
+
+Attribution des factures au vendeur
+
+Historique complet des factures
+
+Gestion des éléments de facture
+Modèle et contrôleur séparés du modèle invoice
+
+Ajout/Suppression de produits sur les factures
+
+Champ discount_price pour remises
+
+Calcul automatique des sous-totaux et totaux
+
+Gestion de la caisse
+Ouverture/Fermeture de caisse avec bilan
+
+États de caisse (ouverte, fermée, en pause)
+
+Suivi des transactions par vendeur
+
+Rapports complets de caisse
+
+Gestion des paiements
+Modes de paiement multiples (espèces, carte, chèque)
+
+Calcul automatique de la monnaie à rendre
+
+Gestion des dettes clients
+Suivi des crédits accordés aux clients
+
+Historique des remboursements
+
+Solde des dettes par client
+
+🔄 Synchronisation Factures ↔ Caisse ↔ Paiements ↔ Retraits ↔ Dettes Clients
+À chaque création, modification ou annulation de facture :
+
+La caisse doit être mise à jour automatiquement (entrée/sortie d'argent).
+
+Le paiement doit être enregistré et lié à la facture et au vendeur.
+
+Si paiement partiel ou crédit accordé → création automatique d'une dette client.
+
+À chaque remboursement ou paiement de dette :
+
+Le remboursement doit mettre à jour la dette du client.
+
+La transaction doit être enregistrée dans la caisse comme retrait ou entrée.
+
+Gestion des retraits :
+
+Enregistrement des retraits manuels depuis la caisse (ex: remise en banque).
+
+Historique des retraits et rapprochement avec les mouvements de caisse.
+
+Vérification automatique de la cohérence :
+
+Détection d'incohérences entre les montants des factures, les paiements, l'état de la caisse, et les dettes ouvertes.
+
+Alerte en cas d'anomalie (ex: facture payée sans mise à jour de caisse, dette sans correspondance de facture, etc.)
+
+Impression des factures
+Prévisualisation avant impression
+
+Impression directe
+
+Inclusion des informations du vendeur
+
+Gestion de la base de données PostgreSQL
+Modèle relationnel robuste
+
+Utilisation de procédures stockées et triggers pour logique métier
+
+Sauvegarde/Restauration :
+
+Manuelle et automatique
+
+Compression optionnelle
+
+Journalisation des sauvegardes/restaurations
+
+Gestion des versions avec horodatage
+
+Affichage interactif avec DataTables Tkinter
+Tableaux interactifs (clients, produits, factures, stocks, etc.)
+
+Fonctionnalités :
+
+Tri par colonnes
+
+Filtres par colonne
+
+Recherche globale et spécifique
+
+Pagination
+
+Sélection multiple
+
+Export CSV, Excel, PDF
+
+Personnalisation de l'affichage
+
+Sauvegarde des préférences par utilisateur
+
+Livrables attendus
+Application POS complète fonctionnelle (Tkinter uniquement)
+
+Code source structuré et documenté (architecture MVC)
+
+Fichier requirements.txt
+
+CONSIGNE NON NÉGOCIABLE
+La logique métier doit être entièrement fonctionnelle avant toute amélioration secondaire.
+Aucune optimisation visuelle ou amélioration de performance avant d'avoir terminé la logique métier à 100 %.
+
+Avec ce prompt complet, tu es prêt à démarrer un projet bien structuré et cohérent. Ça répond à toutes les priorités que tu as en tête pour ton POS avec Python, Tkinter et PostgreSQL.
+
+Si tu as des ajustements supplémentaires ou des points à clarifier, n’hésite pas !
