@@ -718,13 +718,16 @@ class ProductView(BaseView):
                 
                 if adj_type == "add":
                     # Add to current stock
-                    result = self.stock_controller.adjust_stock(
-                        self.current_product["product_id"],
-                        amount,
-                        reason
-                    )
-                    
-                    success_message = f"Added {amount} to stock"
+                    if self.current_product and "product_id" in self.current_product:
+                        result = self.stock_controller.adjust_stock(
+                            self.current_product["product_id"],
+                            amount,
+                            reason
+                        )
+                        success_message = f"Added {amount} to stock"
+                    else:
+                        self.show_warning("Invalid product selection")
+                        return
                 else:
                     # Set to value
                     if amount < 0:
@@ -734,11 +737,15 @@ class ProductView(BaseView):
                     # Calculate adjustment amount
                     adjustment = amount - current_stock
                     
-                    result = self.stock_controller.adjust_stock(
-                        self.current_product["product_id"],
-                        adjustment,
-                        reason
-                    )
+                    if self.current_product and "product_id" in self.current_product:
+                        result = self.stock_controller.adjust_stock(
+                            self.current_product["product_id"],
+                            adjustment,
+                            reason
+                        )
+                    else:
+                        self.show_warning("Invalid product selection")
+                        return
                     
                     success_message = f"Stock level set to {amount}"
                 

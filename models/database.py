@@ -28,24 +28,35 @@ class Database:
         Raises:
             Exception: If database connection fails
         """
-        # Get database configuration from environment variables
-        db_host = os.environ.get("PGHOST", "localhost")
-        db_port = os.environ.get("PGPORT", "5432")
-        db_name = os.environ.get("PGDATABASE", "pos_db")
-        db_user = os.environ.get("PGUSER", "postgres")
-        db_password = os.environ.get("PGPASSWORD", "postgres")
+        # Use DATABASE_URL if available, otherwise use individual env vars
+        db_url = os.environ.get("DATABASE_URL")
         
         # Create connection pool
         try:
-            self.connection_pool = pool.SimpleConnectionPool(
-                1,  # min connections
-                10,  # max connections
-                host=db_host,
-                port=db_port,
-                database=db_name,
-                user=db_user,
-                password=db_password
-            )
+            if db_url:
+                # Connect using DATABASE_URL
+                self.connection_pool = pool.SimpleConnectionPool(
+                    1,  # min connections
+                    10,  # max connections
+                    db_url
+                )
+            else:
+                # Connect using individual parameters
+                db_host = os.environ.get("PGHOST", "localhost")
+                db_port = os.environ.get("PGPORT", "5432")
+                db_name = os.environ.get("PGDATABASE", "pos_db")
+                db_user = os.environ.get("PGUSER", "postgres")
+                db_password = os.environ.get("PGPASSWORD", "postgres")
+                
+                self.connection_pool = pool.SimpleConnectionPool(
+                    1,  # min connections
+                    10,  # max connections
+                    host=db_host,
+                    port=db_port,
+                    database=db_name,
+                    user=db_user,
+                    password=db_password
+                )
             
             # Test connection
             with self.get_connection():

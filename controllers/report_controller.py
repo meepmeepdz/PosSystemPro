@@ -29,9 +29,9 @@ class ReportController:
             dict: Sales summary data with daily/weekly/monthly breakdowns
         """
         # Convert datetime objects to ISO format strings if needed
-        if hasattr(date_from, 'isoformat'):
+        if date_from is not None and hasattr(date_from, 'isoformat'):
             date_from = date_from.isoformat()
-        if hasattr(date_to, 'isoformat'):
+        if date_to is not None and hasattr(date_to, 'isoformat'):
             date_to = date_to.isoformat()
             
         # Query to get daily sales

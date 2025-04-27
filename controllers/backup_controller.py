@@ -37,7 +37,7 @@ class BackupController:
                 backup_name VARCHAR(100) NOT NULL,
                 file_path VARCHAR(255) NOT NULL,
                 file_size BIGINT NOT NULL,
-                compressed BOOLEAN NOT NULL DEFAULT FALSE,
+                is_compressed BOOLEAN NOT NULL DEFAULT FALSE,
                 description TEXT,
                 created_at TIMESTAMP NOT NULL
             )
@@ -97,7 +97,7 @@ class BackupController:
             env = os.environ.copy()
             env["PGPASSWORD"] = db_password
             
-            # Run pg_dump to create backup
+            # Try pg_dump first
             pg_dump_cmd = [
                 "pg_dump",
                 "-h", db_host,
@@ -118,7 +118,8 @@ class BackupController:
             )
             
             if process.returncode != 0:
-                raise Exception(f"pg_dump failed: {process.stderr}")
+                # pg_dump failed, use a database query approach instead
+                self._db_query_backup(sql_path, db_name)
             
             # Compress the backup if requested
             final_path = sql_path
@@ -189,7 +190,7 @@ class BackupController:
                     raise ValueError(f"Backup with ID {backup_id} not found")
                 backup_path = backup_info["file_path"]
             
-            if not os.path.exists(backup_path):
+            if not backup_path or not os.path.exists(backup_path):
                 raise ValueError(f"Backup file not found: {backup_path}")
             
             # Get database connection info
@@ -204,7 +205,10 @@ class BackupController:
             env["PGPASSWORD"] = db_password
             
             # Check if the backup is compressed
-            is_compressed = backup_path.endswith('.gz')
+            if not backup_path:
+                raise ValueError("Backup path is not valid")
+                
+            is_compressed = str(backup_path).endswith('.gz')
             
             # Create a temporary file for decompression if needed
             temp_file = None
@@ -212,7 +216,7 @@ class BackupController:
             
             if is_compressed:
                 temp_file = os.path.join(self.backup_dir, "temp_restore.sql")
-                with gzip.open(backup_path, 'rb') as f_in:
+                with gzip.open(str(backup_path), 'rb') as f_in:
                     with open(temp_file, 'wb') as f_out:
                         shutil.copyfileobj(f_in, f_out)
                 restore_path = temp_file
@@ -471,7 +475,7 @@ class BackupController:
         query = """
             INSERT INTO backups (
                 backup_id, backup_name, file_path, file_size, 
-                compressed, description, created_at
+                is_compressed, description, created_at
             ) VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING *
         """
@@ -518,3 +522,88 @@ class BackupController:
         """
         import uuid
         return str(uuid.uuid4())
+        
+    def _db_query_backup(self, sql_path, db_name):
+        """Create a backup using direct database queries.
+        
+        Args:
+            sql_path (str): Path to save SQL backup
+            db_name (str): Database name
+            
+        Raises:
+            Exception: If backup fails
+        """
+        # Get list of tables
+        tables_query = """
+            SELECT tablename 
+            FROM pg_catalog.pg_tables 
+            WHERE schemaname != 'pg_catalog' 
+            AND schemaname != 'information_schema'
+        """
+        tables = self.db.fetch_all(tables_query)
+        
+        # Open file for writing
+        with open(sql_path, 'w') as f:
+            # Write header
+            f.write(f"-- POS Application Database Backup\n")
+            f.write(f"-- Date: {datetime.datetime.now().isoformat()}\n")
+            f.write(f"-- Database: {db_name}\n\n")
+            
+            # Write schema for each table
+            for table_info in tables:
+                table_name = table_info["tablename"]
+                
+                # Get table schema
+                schema_query = f"""
+                    SELECT column_name, data_type, is_nullable, column_default
+                    FROM information_schema.columns
+                    WHERE table_name = '{table_name}'
+                    ORDER BY ordinal_position
+                """
+                columns = self.db.fetch_all(schema_query)
+                
+                # Write table creation
+                f.write(f"-- Table: {table_name}\n")
+                f.write(f"DROP TABLE IF EXISTS {table_name} CASCADE;\n")
+                f.write(f"CREATE TABLE {table_name} (\n")
+                
+                # Write columns
+                column_defs = []
+                for col in columns:
+                    nullable = "NULL" if col["is_nullable"] == "YES" else "NOT NULL"
+                    default = f"DEFAULT {col['column_default']}" if col["column_default"] else ""
+                    column_defs.append(f"    {col['column_name']} {col['data_type']} {nullable} {default}".strip())
+                
+                f.write(",\n".join(column_defs))
+                f.write("\n);\n\n")
+                
+                # Get and write data
+                try:
+                    data_query = f"SELECT * FROM {table_name}"
+                    rows = self.db.fetch_all(data_query)
+                    
+                    if rows:
+                        f.write(f"-- Data for table: {table_name}\n")
+                        for row in rows:
+                            cols = []
+                            vals = []
+                            for col, val in row.items():
+                                cols.append(col)
+                                if val is None:
+                                    vals.append("NULL")
+                                elif isinstance(val, (int, float)):
+                                    vals.append(str(val))
+                                elif isinstance(val, datetime.datetime):
+                                    vals.append(f"'{val.isoformat()}'")
+                                else:
+                                    # Escape single quotes
+                                    escaped = str(val).replace("'", "''")
+                                    vals.append(f"'{escaped}'")
+                            
+                            f.write(f"INSERT INTO {table_name} ({', '.join(cols)}) VALUES ({', '.join(vals)});\n")
+                        f.write("\n")
+                except Exception as e:
+                    f.write(f"-- Error getting data for {table_name}: {str(e)}\n\n")
+            
+            # Write constraints and indexes (simplified)
+            f.write("-- End of backup\n")

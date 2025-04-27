@@ -155,8 +155,13 @@ class StockController:
             # If no stock exists, add the new quantity
             return self.add_stock(product_id, new_quantity, reason)
         
+        # Get the current quantity, defaulting to 0 if None or not present
+        current_quantity = 0
+        if current_stock and "quantity" in current_stock:
+            current_quantity = current_stock["quantity"]
+        
         # Calculate difference
-        difference = new_quantity - current_stock["quantity"]
+        difference = new_quantity - current_quantity
         
         if difference == 0:
             return current_stock

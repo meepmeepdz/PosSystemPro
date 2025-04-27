@@ -25,6 +25,7 @@ class BaseView(ttk.Frame):
         
         # Apply default styles
         self.style = ttk.Style()
+        self.style.theme_use("clam")
         self._setup_styles()
     
     def _setup_styles(self):

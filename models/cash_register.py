@@ -129,7 +129,7 @@ class CashRegister(BaseModel):
             updated_register = self.update(register_id, update_data)
             
             # Get transaction summary
-            summary = self.get_register_summary(register_id)
+            summary = self.get_register_summary(register_id) or {}
             
             # Add closing information
             summary["closing_user_id"] = user_id
@@ -151,7 +151,17 @@ class CashRegister(BaseModel):
             # Commit transaction
             self.db.commit_transaction()
             
-            return {**updated_register, **summary}
+            # Make sure both are dictionaries
+            if updated_register is None:
+                updated_register = {}
+            if summary is None:
+                summary = {}
+                
+            combined_data = {}
+            combined_data.update(updated_register)
+            combined_data.update(summary)
+            
+            return combined_data
             
         except Exception as e:
             # Rollback transaction on error
