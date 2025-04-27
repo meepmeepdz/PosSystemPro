@@ -222,6 +222,105 @@ class CashRegister(BaseModel):
         
         return self.update(register_id, update_data)
     
+    def add_cash(self, register_id, amount, notes=None):
+        """Add cash to a register.
+        
+        Args:
+            register_id (str): ID of the register
+            amount (float): Amount to add
+            notes (str, optional): Notes about the addition
+            
+        Returns:
+            dict: Created transaction data
+        """
+        # Get register
+        register = self.get_by_id(register_id)
+        if not register:
+            raise ValueError("Register not found")
+        
+        if register["status"] == self.STATUS_CLOSED:
+            raise ValueError("Cannot add cash to a closed register")
+        
+        # Begin a transaction
+        self.db.begin_transaction()
+        
+        try:
+            # Add to register balance
+            new_balance = register["current_amount"] + amount
+            self.update(register_id, {"current_amount": new_balance, "updated_at": self.get_timestamp()})
+            
+            # Record transaction
+            transaction = self.record_transaction(
+                amount,
+                self.TRANSACTION_DEPOSIT,
+                notes or "Cash added to register",
+                register.get("user_id"),  # Use the register's user_id as fallback
+                None,
+                register_id
+            )
+            
+            # Commit changes
+            self.db.commit_transaction()
+            
+            return transaction
+            
+        except Exception as e:
+            self.db.rollback_transaction()
+            raise e
+    
+    def remove_cash(self, register_id, amount, notes=None):
+        """Remove cash from a register.
+        
+        Args:
+            register_id (str): ID of the register
+            amount (float): Amount to remove
+            notes (str, optional): Notes about the removal
+            
+        Returns:
+            dict: Created transaction data
+            
+        Raises:
+            ValueError: If insufficient funds or register not found
+        """
+        # Get register
+        register = self.get_by_id(register_id)
+        if not register:
+            raise ValueError("Register not found")
+        
+        if register["status"] == self.STATUS_CLOSED:
+            raise ValueError("Cannot remove cash from a closed register")
+        
+        # Check sufficient funds
+        if register["current_amount"] < amount:
+            raise ValueError(f"Insufficient funds: Register has {register['current_amount']}, trying to remove {amount}")
+        
+        # Begin a transaction
+        self.db.begin_transaction()
+        
+        try:
+            # Subtract from register balance
+            new_balance = register["current_amount"] - amount
+            self.update(register_id, {"current_amount": new_balance, "updated_at": self.get_timestamp()})
+            
+            # Record transaction
+            transaction = self.record_transaction(
+                amount,
+                self.TRANSACTION_WITHDRAWAL,
+                notes or "Cash removed from register",
+                register.get("user_id"),  # Use the register's user_id as fallback
+                None,
+                register_id
+            )
+            
+            # Commit changes
+            self.db.commit_transaction()
+            
+            return transaction
+            
+        except Exception as e:
+            self.db.rollback_transaction()
+            raise e
+    
     def record_transaction(self, amount, transaction_type, description, user_id, 
                            reference_id=None, register_id=None):
         """Record a cash register transaction.

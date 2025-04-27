@@ -1,0 +1,34 @@
+Contexte
+Développez une application complète de point de vente (POS) en utilisant Python 3.x et Tkinter comme interface graphique, avec PostgreSQL comme base de données, suivant strictement l'architecture MVC (Modèle-Vue-Contrôleur).
+
+Priorités Absolues
+PRIORITÉ N°1 : Logique métier complète et fonctionnelle avant tout
+INTERFACE : Tkinter uniquement
+Monnaie : Dinar algérien (DA)
+
+Fonctionnalités attendues
+Gestion des utilisateurs : CRUD, authentification sécurisée avec rôles, suivi des ventes par vendeur.
+Gestion des clients : CRUD, historique des achats.
+Gestion des produits : CRUD, code-barres, recherche, catégorie produit.
+Gestion des catégories de produits : CRUD, association avec produits.
+Gestion des stocks : Suivi des niveaux, alertes, historique des mouvements.
+Gestion des factures : Création, modification, annulation, numérotation automatique, attribution au vendeur.
+Gestion des éléments de facture : Ajout/Suppression produits, calcul des totaux, champ discount_price.
+Gestion de la caisse : Ouverture/fermeture, suivi des transactions, rapports complets.
+Gestion des paiements : Espèces, carte, chèque, calcul de monnaie, dettes clients, suivi des crédits.
+Synchronisation : Factures ↔ Caisse ↔ Paiements ↔ Retraits ↔ Dettes Clients.
+Gestion des retraits : Enregistrement, rapprochement des mouvements de caisse.
+Vérification de cohérence : Détection d'anomalies entre factures, paiements, caisse et dettes.
+Impression des factures : Prévisualisation et impression directe, inclusion des informations du vendeur.
+Base de données PostgreSQL : Modèle relationnel robuste, procédures stockées et triggers.
+Sauvegarde/Restauration : Manuelle et automatique, journalisation.
+
+Affichage interactif DataTables Tkinter : Tri, filtres, recherche, export CSV, Excel, PDF.
+
+Livrables attendus
+Application POS complète fonctionnelle (Tkinter uniquement)
+Code source structuré et documenté (architecture MVC)
+Fichier requirements.txt
+
+CONSIGNE NON NÉGOCIABLE
+La logique métier doit être entièrement fonctionnelle avant toute amélioration secondaire. Aucune optimisation visuelle ou amélioration de performance avant d'avoir terminé la logique métier à 100 %.

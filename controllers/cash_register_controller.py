@@ -90,6 +90,35 @@ class CashRegisterController:
             dict: Current register data or None if no open register
         """
         return self.register_model.get_current_register()
+        
+    def add_cash(self, register_id, amount, notes=None):
+        """Add cash to the register.
+        
+        Args:
+            register_id (str): ID of the register
+            amount (float): Amount to add
+            notes (str, optional): Notes about the addition
+            
+        Returns:
+            dict: Created transaction data
+        """
+        return self.register_model.add_cash(register_id, amount, notes)
+        
+    def remove_cash(self, register_id, amount, notes=None):
+        """Remove cash from the register.
+        
+        Args:
+            register_id (str): ID of the register
+            amount (float): Amount to remove
+            notes (str, optional): Notes about the removal
+            
+        Returns:
+            dict: Created transaction data
+            
+        Raises:
+            ValueError: If insufficient funds
+        """
+        return self.register_model.remove_cash(register_id, amount, notes)
     
     def record_transaction(self, amount, transaction_type, description, user_id, 
                           reference_id=None, register_id=None):
@@ -193,3 +222,21 @@ class CashRegisterController:
             "VOID": CashRegister.TRANSACTION_VOID,
             "DEBT_PAYMENT": CashRegister.TRANSACTION_DEBT_PAYMENT
         }
+        
+    def get_transaction_by_id(self, transaction_id):
+        """Get a transaction by ID.
+        
+        Args:
+            transaction_id (str): Transaction ID
+            
+        Returns:
+            dict: Transaction data or None if not found
+        """
+        query = """
+            SELECT t.*, u.username
+            FROM cash_register_transactions t
+            LEFT JOIN users u ON t.user_id = u.user_id
+            WHERE t.transaction_id = %s
+        """
+        
+        return self.db.fetch_one(query, (transaction_id,))

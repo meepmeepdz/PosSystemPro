@@ -592,3 +592,254 @@ class ReportController:
                 "to": date_to
             }
         }
+        
+    def get_sales_by_product(self, date_from, date_to):
+        """Generate a sales by product report.
+        
+        Args:
+            date_from (datetime): Start date
+            date_to (datetime): End date
+            
+        Returns:
+            dict: Sales by product data
+        """
+        # Convert datetime objects to ISO format strings
+        date_from_str = date_from.isoformat() if hasattr(date_from, 'isoformat') else date_from
+        date_to_str = date_to.isoformat() if hasattr(date_to, 'isoformat') else date_to
+        
+        # Query to get sales by product
+        query = """
+            SELECT 
+                p.product_id,
+                p.name as product_name,
+                p.sku,
+                p.barcode,
+                c.name as category_name,
+                SUM(ii.quantity) as quantity_sold,
+                SUM(ii.subtotal) as total_amount,
+                COUNT(DISTINCT i.invoice_id) as invoice_count,
+                AVG(ii.price) as average_price
+            FROM invoice_items ii
+            JOIN products p ON ii.product_id = p.product_id
+            LEFT JOIN categories c ON p.category_id = c.category_id
+            JOIN invoices i ON ii.invoice_id = i.invoice_id
+            WHERE i.status = 'COMPLETED'
+              AND i.created_at BETWEEN %s AND %s
+            GROUP BY p.product_id, p.name, p.sku, p.barcode, c.name
+            ORDER BY quantity_sold DESC
+        """
+        
+        # Execute query
+        products = self.db.fetch_all(query, (date_from_str, date_to_str))
+        
+        # Calculate totals
+        total_quantity = 0
+        total_amount = 0
+        
+        for product in products:
+            total_quantity += product["quantity_sold"]
+            total_amount += product["total_amount"]
+        
+        # Calculate percentage for each product
+        for product in products:
+            if total_amount > 0:
+                product["percentage"] = (product["total_amount"] / total_amount) * 100
+            else:
+                product["percentage"] = 0
+        
+        # Get top selling product
+        top_product = products[0]["product_name"] if products else "N/A"
+        
+        # Return results
+        return {
+            "data": products,
+            "summary": {
+                "total_products": len(products),
+                "total_quantity": total_quantity,
+                "total_sales": total_amount,
+                "top_product": top_product
+            }
+        }
+    
+    def get_sales_by_category(self, date_from, date_to):
+        """Generate a sales by category report.
+        
+        Args:
+            date_from (datetime): Start date
+            date_to (datetime): End date
+            
+        Returns:
+            dict: Sales by category data
+        """
+        # Convert datetime objects to ISO format strings
+        date_from_str = date_from.isoformat() if hasattr(date_from, 'isoformat') else date_from
+        date_to_str = date_to.isoformat() if hasattr(date_to, 'isoformat') else date_to
+        
+        # Query to get sales by category
+        query = """
+            SELECT 
+                c.category_id,
+                c.name as category_name,
+                COUNT(DISTINCT p.product_id) as product_count,
+                SUM(ii.quantity) as quantity_sold,
+                SUM(ii.subtotal) as total_amount,
+                COUNT(DISTINCT i.invoice_id) as invoice_count
+            FROM invoice_items ii
+            JOIN products p ON ii.product_id = p.product_id
+            LEFT JOIN categories c ON p.category_id = c.category_id
+            JOIN invoices i ON ii.invoice_id = i.invoice_id
+            WHERE i.status = 'COMPLETED'
+              AND i.created_at BETWEEN %s AND %s
+            GROUP BY c.category_id, c.name
+            ORDER BY total_amount DESC
+        """
+        
+        # Execute query
+        categories = self.db.fetch_all(query, (date_from_str, date_to_str))
+        
+        # Calculate totals
+        total_quantity = 0
+        total_amount = 0
+        
+        for category in categories:
+            total_quantity += category["quantity_sold"]
+            total_amount += category["total_amount"]
+        
+        # Calculate percentage for each category
+        for category in categories:
+            if total_amount > 0:
+                category["percentage"] = (category["total_amount"] / total_amount) * 100
+            else:
+                category["percentage"] = 0
+        
+        # Get top selling category
+        top_category = categories[0]["category_name"] if categories else "N/A"
+        
+        # Return results
+        return {
+            "data": categories,
+            "summary": {
+                "total_categories": len(categories),
+                "total_quantity": total_quantity,
+                "total_sales": total_amount,
+                "top_category": top_category
+            }
+        }
+    
+    def get_sales_by_customer(self, date_from, date_to):
+        """Generate a sales by customer report.
+        
+        Args:
+            date_from (datetime): Start date
+            date_to (datetime): End date
+            
+        Returns:
+            dict: Sales by customer data
+        """
+        # Convert datetime objects to ISO format strings
+        date_from_str = date_from.isoformat() if hasattr(date_from, 'isoformat') else date_from
+        date_to_str = date_to.isoformat() if hasattr(date_to, 'isoformat') else date_to
+        
+        # Query to get sales by customer
+        query = """
+            SELECT 
+                COALESCE(c.customer_id, 'walk-in') as customer_id,
+                COALESCE(c.full_name, 'Walk-in Customer') as customer_name,
+                COUNT(i.invoice_id) as invoice_count,
+                SUM(i.total_amount) as total_amount,
+                MAX(i.created_at) as last_purchase
+            FROM invoices i
+            LEFT JOIN customers c ON i.customer_id = c.customer_id
+            WHERE i.status = 'COMPLETED'
+              AND i.created_at BETWEEN %s AND %s
+            GROUP BY COALESCE(c.customer_id, 'walk-in'), COALESCE(c.full_name, 'Walk-in Customer')
+            ORDER BY total_amount DESC
+        """
+        
+        # Execute query
+        customers = self.db.fetch_all(query, (date_from_str, date_to_str))
+        
+        # Calculate totals
+        total_amount = 0
+        
+        for customer in customers:
+            total_amount += customer["total_amount"]
+        
+        # Calculate percentage for each customer
+        for customer in customers:
+            if total_amount > 0:
+                customer["percentage"] = (customer["total_amount"] / total_amount) * 100
+            else:
+                customer["percentage"] = 0
+        
+        # Get top customer
+        top_customer = customers[0]["customer_name"] if customers else "N/A"
+        
+        # Return results
+        return {
+            "data": customers,
+            "summary": {
+                "total_customers": len(customers),
+                "total_sales": total_amount,
+                "top_customer": top_customer
+            }
+        }
+    
+    def get_sales_by_user(self, date_from, date_to):
+        """Generate a sales by user report.
+        
+        Args:
+            date_from (datetime): Start date
+            date_to (datetime): End date
+            
+        Returns:
+            dict: Sales by user data
+        """
+        # Convert datetime objects to ISO format strings
+        date_from_str = date_from.isoformat() if hasattr(date_from, 'isoformat') else date_from
+        date_to_str = date_to.isoformat() if hasattr(date_to, 'isoformat') else date_to
+        
+        # Query to get sales by user
+        query = """
+            SELECT 
+                u.user_id,
+                u.username,
+                COUNT(i.invoice_id) as invoice_count,
+                SUM(i.total_amount) as total_amount,
+                AVG(i.total_amount) as average_invoice
+            FROM invoices i
+            JOIN users u ON i.user_id = u.user_id
+            WHERE i.status = 'COMPLETED'
+              AND i.created_at BETWEEN %s AND %s
+            GROUP BY u.user_id, u.username
+            ORDER BY total_amount DESC
+        """
+        
+        # Execute query
+        users = self.db.fetch_all(query, (date_from_str, date_to_str))
+        
+        # Calculate totals
+        total_amount = 0
+        
+        for user in users:
+            total_amount += user["total_amount"]
+        
+        # Calculate percentage for each user
+        for user in users:
+            if total_amount > 0:
+                user["percentage"] = (user["total_amount"] / total_amount) * 100
+            else:
+                user["percentage"] = 0
+        
+        # Get top user
+        top_user = users[0]["username"] if users else "N/A"
+        
+        # Return results
+        return {
+            "data": users,
+            "summary": {
+                "total_users": len(users),
+                "total_sales": total_amount,
+                "top_user": top_user
+            }
+        }

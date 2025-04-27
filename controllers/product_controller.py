@@ -92,7 +92,7 @@ class ProductController:
         return self.product_model.update_product(product_id, data)
     
     def search_products(self, search_term=None, category_id=None, is_active=None, 
-                         order_by="name", limit=100, offset=0):
+                         order_by="name", limit=100, offset=0, include_inactive=None):
         """Search for products with various filters.
         
         Args:
@@ -102,10 +102,15 @@ class ProductController:
             order_by (str, optional): Column to order by
             limit (int, optional): Maximum number of records to return
             offset (int, optional): Number of records to skip
+            include_inactive (bool, optional): Whether to include inactive products (overrides is_active)
             
         Returns:
             list: List of products matching the search criteria
         """
+        # If include_inactive is explicitly set, use it to determine is_active
+        if include_inactive is not None:
+            is_active = None if include_inactive else True
+            
         return self.product_model.search_products(
             search_term, category_id, is_active, order_by, limit, offset
         )

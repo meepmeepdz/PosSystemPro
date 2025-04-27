@@ -173,8 +173,8 @@ class UserView(BaseView):
         username_frame = ttk.Frame(form_frame)
         username_frame.pack(fill=tk.X, pady=5)
         
-        username_label = ttk.Label(username_frame, text="Username:")
-        username_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        username_label = ttk.Label(username_frame, text="Username:", width=15)
+        username_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         username_entry = ttk.Entry(username_frame, textvariable=self.username_var)
         username_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -183,8 +183,8 @@ class UserView(BaseView):
         name_frame = ttk.Frame(form_frame)
         name_frame.pack(fill=tk.X, pady=5)
         
-        name_label = ttk.Label(name_frame, text="Full Name:")
-        name_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        name_label = ttk.Label(name_frame, text="Full Name:", width=15)
+        name_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         name_entry = ttk.Entry(name_frame, textvariable=self.full_name_var)
         name_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -193,8 +193,8 @@ class UserView(BaseView):
         email_frame = ttk.Frame(form_frame)
         email_frame.pack(fill=tk.X, pady=5)
         
-        email_label = ttk.Label(email_frame, text="Email:")
-        email_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        email_label = ttk.Label(email_frame, text="Email:", width=15)
+        email_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         email_entry = ttk.Entry(email_frame, textvariable=self.email_var)
         email_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -203,8 +203,8 @@ class UserView(BaseView):
         role_frame = ttk.Frame(form_frame)
         role_frame.pack(fill=tk.X, pady=5)
         
-        role_label = ttk.Label(role_frame, text="Role:")
-        role_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        role_label = ttk.Label(role_frame, text="Role:", width=15)
+        role_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         role_combobox = ttk.Combobox(
             role_frame, 
@@ -218,8 +218,8 @@ class UserView(BaseView):
         status_frame = ttk.Frame(form_frame)
         status_frame.pack(fill=tk.X, pady=5)
         
-        status_label = ttk.Label(status_frame, text="Active:")
-        status_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        status_label = ttk.Label(status_frame, text="Active:", width=15)
+        status_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         status_check = ttk.Checkbutton(status_frame, variable=self.is_active_var)
         status_check.pack(side=tk.LEFT)
@@ -248,8 +248,8 @@ class UserView(BaseView):
         password_frame = ttk.Frame(self.password_fields_frame)
         password_frame.pack(fill=tk.X, pady=5)
         
-        password_label = ttk.Label(password_frame, text="Password:")
-        password_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        password_label = ttk.Label(password_frame, text="Password:", width=15)
+        password_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         password_entry = ttk.Entry(password_frame, textvariable=self.password_var, show="*")
         password_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -258,8 +258,8 @@ class UserView(BaseView):
         confirm_frame = ttk.Frame(self.password_fields_frame)
         confirm_frame.pack(fill=tk.X, pady=5)
         
-        confirm_label = ttk.Label(confirm_frame, text="Confirm:")
-        confirm_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        confirm_label = ttk.Label(confirm_frame, text="Confirm:", width=15)
+        confirm_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         confirm_entry = ttk.Entry(confirm_frame, textvariable=self.confirm_password_var, show="*")
         confirm_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -271,7 +271,7 @@ class UserView(BaseView):
             font=("", 9),
             foreground="gray"
         )
-        req_label.pack(anchor=tk.W, padx=(100, 0))
+        req_label.pack(anchor=tk.W, padx=(15, 0))
         
         # Button frame at the bottom
         button_frame = ttk.Frame(self.user_detail_frame)

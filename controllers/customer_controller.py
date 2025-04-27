@@ -106,7 +106,7 @@ class CustomerController:
         # If no associated records, delete the customer
         return self.customer_model.delete(customer_id)
     
-    def search_customers(self, search_term=None, order_by="full_name", limit=100, offset=0):
+    def search_customers(self, search_term=None, order_by="full_name", limit=100, offset=0, include_inactive=False):
         """Search for customers.
         
         Args:
@@ -114,11 +114,19 @@ class CustomerController:
             order_by (str, optional): Column to order by
             limit (int, optional): Maximum number of records to return
             offset (int, optional): Number of records to skip
+            include_inactive (bool, optional): Whether to include inactive customers
             
         Returns:
             list: List of customers matching the search criteria
         """
-        return self.customer_model.search_customers(search_term, order_by, limit, offset)
+        # Get the customers from the model
+        customers = self.customer_model.search_customers(search_term, order_by, limit, offset)
+        
+        # Filter out inactive customers if needed
+        if not include_inactive:
+            customers = [c for c in customers if c.get('is_active', True)]
+            
+        return customers
     
     def get_customer_purchase_history(self, customer_id, order_by="created_at DESC", limit=50, offset=0):
         """Get a customer's purchase history.

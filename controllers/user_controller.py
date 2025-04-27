@@ -18,18 +18,24 @@ class UserController:
         self.db = db
         self.user_model = User(db)
     
-    def get_all_users(self, order_by="username", active_only=True):
+    def get_all_users(self, order_by="username", active_only=True, include_inactive=None):
         """Get all users.
         
         Args:
             order_by (str, optional): Column to order by
             active_only (bool, optional): Whether to return only active users
+            include_inactive (bool, optional): If True, includes inactive users (overrides active_only)
             
         Returns:
             list: List of users
         """
         filters = {}
-        if active_only:
+        # If include_inactive is explicitly set, use it (overrides active_only)
+        if include_inactive is not None:
+            if not include_inactive:
+                filters["active"] = True
+        # Otherwise fall back to using active_only
+        elif active_only:
             filters["active"] = True
         
         users = self.user_model.get_all(order_by=order_by, filters=filters)

@@ -310,14 +310,14 @@ class CashRegisterView(BaseView):
             if register:
                 # Register is open
                 self.status_label.config(text="Open", foreground="green")
-                self.balance_label.config(text=f"Current Balance: ${register['current_balance']:.2f}")
+                self.balance_label.config(text=f"Current Balance: ${register['current_amount']:.2f}")
                 
                 # Format open time
-                open_time = register["opened_at"].strftime("%Y-%m-%d %H:%M:%S") if register["opened_at"] else "-"
+                open_time = register["opening_time"].strftime("%Y-%m-%d %H:%M:%S") if register["opening_time"] else "-"
                 self.open_time_label.config(text=f"Opened at: {open_time}")
                 
                 # Show opened by
-                self.opened_by_label.config(text=f"Opened by: {register.get('opened_by_username', '-')}")
+                self.opened_by_label.config(text=f"Opened by: {register.get('user_name', '-')}")
                 
                 # Update buttons
                 self._show_open_register_buttons()
@@ -361,8 +361,13 @@ class CashRegisterView(BaseView):
             self.history_tree.delete(item)
         
         try:
+            # Check if we have a current register
+            if not self.current_register or not self.current_register.get("register_id"):
+                return
+                
             # Get transaction history
-            transactions = self.cash_register_controller.get_register_transactions(limit=100)
+            register_id = self.current_register["register_id"]
+            transactions = self.cash_register_controller.get_register_transactions(register_id, limit=100)
             
             # Add to treeview
             for transaction in transactions:
@@ -503,9 +508,9 @@ class CashRegisterView(BaseView):
                 return
             
             # Check if removing more than available (for remove only)
-            if adjustment_type == "remove" and amount > self.current_register["current_balance"]:
+            if adjustment_type == "remove" and amount > self.current_register["current_amount"]:
                 self.show_warning(
-                    f"Cannot remove ${amount:.2f} - only ${self.current_register['current_balance']:.2f} available"
+                    f"Cannot remove ${amount:.2f} - only ${self.current_register['current_amount']:.2f} available"
                 )
                 return
             
@@ -552,7 +557,7 @@ class CashRegisterView(BaseView):
         
         # Confirm closing
         confirm = self.show_confirmation(
-            f"Are you sure you want to close the register? Current balance: ${self.current_register['current_balance']:.2f}"
+            f"Are you sure you want to close the register? Current balance: ${self.current_register['current_amount']:.2f}"
         )
         if not confirm:
             return
