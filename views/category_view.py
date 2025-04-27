@@ -163,8 +163,8 @@ class CategoryView(BaseView):
         name_frame = ttk.Frame(form_frame)
         name_frame.pack(fill=tk.X, pady=5)
         
-        name_label = ttk.Label(name_frame, text="Name:")
-        name_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        name_label = ttk.Label(name_frame, text="Name:", width=15)
+        name_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         name_entry = ttk.Entry(name_frame, textvariable=self.name_var)
         name_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -173,8 +173,8 @@ class CategoryView(BaseView):
         desc_frame = ttk.Frame(form_frame)
         desc_frame.pack(fill=tk.X, pady=5)
         
-        desc_label = ttk.Label(desc_frame, text="Description:")
-        desc_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        desc_label = ttk.Label(desc_frame, text="Description:", width=15)
+        desc_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         # Create a text widget for description with scrollbar
         desc_container = ttk.Frame(desc_frame)
@@ -191,8 +191,8 @@ class CategoryView(BaseView):
         status_frame = ttk.Frame(form_frame)
         status_frame.pack(fill=tk.X, pady=5)
         
-        status_label = ttk.Label(status_frame, text="Active:")
-        status_label.pack(side=tk.LEFT, padx=(0, 5), width=100, anchor=tk.W)
+        status_label = ttk.Label(status_frame, text="Active:", width=15)
+        status_label.pack(side=tk.LEFT, padx=(0, 5), anchor=tk.W)
         
         status_check = ttk.Checkbutton(status_frame, variable=self.is_active_var)
         status_check.pack(side=tk.LEFT)
