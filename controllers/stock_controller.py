@@ -28,6 +28,20 @@ class StockController:
             dict: Stock information or None if not found
         """
         return self.stock_model.get_stock_by_product(product_id)
+        
+    def get_stock_level(self, product_id):
+        """Get the current stock level for a product.
+        
+        Args:
+            product_id (str): Product ID
+            
+        Returns:
+            int: Current stock level (0 if no stock record exists)
+        """
+        stock = self.get_stock_by_product(product_id)
+        if stock and "quantity" in stock:
+            return stock["quantity"]
+        return 0
     
     def update_stock_quantity(self, product_id, quantity_change, reason=None, reference_id=None):
         """Update stock quantity for a product and record the movement.

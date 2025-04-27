@@ -543,8 +543,20 @@ class StockView(BaseView):
     
     def _add_stock(self):
         """Add stock to the current product."""
+        # Multiple validations to ensure we have a valid product
         if not self.current_product:
             self.show_warning("No product selected")
+            return
+            
+        # Verify product_id exists in the current_product dictionary
+        if not isinstance(self.current_product, dict) or "product_id" not in self.current_product:
+            self.show_warning("Invalid product selection. Please select a product first.")
+            return
+            
+        # Store product_id separately to avoid potential NoneType issues later
+        product_id = self.current_product.get("product_id")
+        if not product_id:
+            self.show_warning("Invalid product ID. Please select a product first.")
             return
         
         try:
@@ -561,15 +573,17 @@ class StockView(BaseView):
             # Get reason
             reason = self.adjustment_reason_var.get().strip() or "Manual stock addition"
             
-            # Add stock
+            # Add stock using the stored product_id
             result = self.stock_controller.adjust_stock(
-                self.current_product["product_id"],
+                product_id,
                 amount,
                 reason
             )
             
-            # Refresh stock level
-            self._on_stock_selected()
+            # Refresh stock level - use a local copy of product_id to avoid potential issues
+            selected_items = self.stock_tree.selection()
+            if selected_items:
+                self._on_stock_selected()
             
             # Clear adjustment fields
             self.adjustment_amount_var.set("0")
@@ -582,15 +596,28 @@ class StockView(BaseView):
             self._refresh_stock()
             
             # Re-select the product
-            self.stock_tree.selection_set([self.current_product["product_id"]])
+            if product_id:
+                self.stock_tree.selection_set([product_id])
             
         except Exception as e:
             self.show_error(f"Error adding stock: {str(e)}")
     
     def _remove_stock(self):
         """Remove stock from the current product."""
+        # Multiple validations to ensure we have a valid product
         if not self.current_product:
             self.show_warning("No product selected")
+            return
+            
+        # Verify product_id exists in the current_product dictionary  
+        if not isinstance(self.current_product, dict) or "product_id" not in self.current_product:
+            self.show_warning("Invalid product selection. Please select a product first.")
+            return
+            
+        # Store product_id separately to avoid potential NoneType issues later
+        product_id = self.current_product.get("product_id")
+        if not product_id:
+            self.show_warning("Invalid product ID. Please select a product first.")
             return
         
         try:
@@ -604,8 +631,11 @@ class StockView(BaseView):
                 self.show_warning("Please enter a valid number")
                 return
             
-            # Get current stock level
-            current_stock = int(self.stock_level_label.cget("text") or 0)
+            # Get current stock level (with fail-safe)
+            try:
+                current_stock = int(self.stock_level_label.cget("text") or 0)
+            except (ValueError, TypeError):
+                current_stock = 0
             
             # Check if removing more than available
             if amount > current_stock:
@@ -618,15 +648,17 @@ class StockView(BaseView):
             # Get reason
             reason = self.adjustment_reason_var.get().strip() or "Manual stock removal"
             
-            # Remove stock (negative adjustment)
+            # Remove stock (negative adjustment) using the stored product_id
             result = self.stock_controller.adjust_stock(
-                self.current_product["product_id"],
+                product_id,
                 -amount,
                 reason
             )
             
-            # Refresh stock level
-            self._on_stock_selected()
+            # Refresh stock level - use a local copy of product_id to avoid potential issues
+            selected_items = self.stock_tree.selection()
+            if selected_items:
+                self._on_stock_selected()
             
             # Clear adjustment fields
             self.adjustment_amount_var.set("0")
@@ -639,7 +671,8 @@ class StockView(BaseView):
             self._refresh_stock()
             
             # Re-select the product
-            self.stock_tree.selection_set([self.current_product["product_id"]])
+            if product_id:
+                self.stock_tree.selection_set([product_id])
             
         except Exception as e:
             self.show_error(f"Error removing stock: {str(e)}")

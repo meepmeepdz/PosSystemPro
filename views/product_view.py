@@ -620,13 +620,27 @@ class ProductView(BaseView):
     
     def _adjust_stock(self):
         """Adjust stock for the current product."""
+        # Multiple validations to ensure we have a valid product
         if not self.current_product:
             self.show_warning("Please select a product first")
+            return
+            
+        # Verify product_id exists in the current_product dictionary
+        if not isinstance(self.current_product, dict) or "product_id" not in self.current_product:
+            self.show_warning("Invalid product selection. Please select a product first.")
+            return
+            
+        # Store product information separately to avoid potential NoneType issues
+        product_id = self.current_product.get("product_id")
+        product_name = self.current_product.get("name", "Selected Product")
+        
+        if not product_id:
+            self.show_warning("Invalid product ID. Please select a product first.")
             return
         
         # Create a dialog window
         dialog = tk.Toplevel(self)
-        dialog.title(f"Adjust Stock: {self.current_product['name']}")
+        dialog.title(f"Adjust Stock: {product_name}")
         dialog.transient(self.winfo_toplevel())  # Make dialog modal
         dialog.grab_set()
         
@@ -637,9 +651,9 @@ class ProductView(BaseView):
         content_frame = ttk.Frame(dialog, padding=20)
         content_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Current stock label
+        # Get current stock with error handling
         try:
-            current_stock = self.stock_controller.get_stock_level(self.current_product["product_id"])
+            current_stock = self.stock_controller.get_stock_level(product_id)
         except Exception:
             current_stock = 0
             
@@ -706,6 +720,12 @@ class ProductView(BaseView):
         # Function to handle adjustment
         def apply_adjustment():
             try:
+                # Re-verify product_id is still valid
+                if not product_id:
+                    self.show_warning("Product information is no longer valid")
+                    dialog.destroy()
+                    return
+                
                 # Validate input
                 try:
                     amount = int(adj_var.get())
@@ -716,48 +736,44 @@ class ProductView(BaseView):
                 reason = reason_var.get().strip() or "Manual adjustment"
                 adj_type = type_var.get()
                 
-                if adj_type == "add":
-                    # Add to current stock
-                    if self.current_product and "product_id" in self.current_product:
+                # Separate try block for the adjustment operation
+                try:
+                    if adj_type == "add":
+                        # Add to current stock
                         result = self.stock_controller.adjust_stock(
-                            self.current_product["product_id"],
+                            product_id,
                             amount,
                             reason
                         )
                         success_message = f"Added {amount} to stock"
                     else:
-                        self.show_warning("Invalid product selection")
-                        return
-                else:
-                    # Set to value
-                    if amount < 0:
-                        self.show_warning("Stock level cannot be negative")
-                        return
-                    
-                    # Calculate adjustment amount
-                    adjustment = amount - current_stock
-                    
-                    if self.current_product and "product_id" in self.current_product:
+                        # Set to value
+                        if amount < 0:
+                            self.show_warning("Stock level cannot be negative")
+                            return
+                        
+                        # Calculate adjustment amount
+                        adjustment = amount - current_stock
+                        
                         result = self.stock_controller.adjust_stock(
-                            self.current_product["product_id"],
+                            product_id,
                             adjustment,
                             reason
                         )
-                    else:
-                        self.show_warning("Invalid product selection")
-                        return
+                        success_message = f"Stock level set to {amount}"
+                
+                    # Close dialog
+                    dialog.destroy()
                     
-                    success_message = f"Stock level set to {amount}"
+                    # Refresh product and show success message
+                    self._on_product_selected()
+                    self.show_success(success_message)
                 
-                # Close dialog
-                dialog.destroy()
-                
-                # Refresh product and show success message
-                self._on_product_selected()
-                self.show_success(success_message)
+                except Exception as e:
+                    self.show_error(f"Error during stock adjustment: {str(e)}")
                 
             except Exception as e:
-                self.show_error(f"Error adjusting stock: {str(e)}")
+                self.show_error(f"Error processing stock adjustment: {str(e)}")
         
         apply_button = ttk.Button(
             button_frame, 
