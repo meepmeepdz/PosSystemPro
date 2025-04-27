@@ -3,7 +3,14 @@ Report controller for POS application.
 Handles report generation operations.
 """
 
+import os
 from datetime import datetime, timedelta
+from utils.export_utils import (
+    export_sales_report_to_pdf, export_sales_report_to_excel,
+    export_inventory_report_to_pdf, export_inventory_report_to_excel,
+    export_customer_report_to_pdf, export_customer_report_to_excel,
+    export_financial_report_to_pdf, export_financial_report_to_excel
+)
 
 
 class ReportController:

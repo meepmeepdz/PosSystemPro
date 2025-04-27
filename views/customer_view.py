@@ -604,7 +604,14 @@ class CustomerView(BaseView):
                 success_message = "Customer updated successfully"
             else:
                 # Create new customer
-                result = self.customer_controller.create_customer(customer_data)
+                result = self.customer_controller.create_customer(
+                    full_name=customer_data["full_name"],
+                    email=customer_data.get("email"),
+                    phone=customer_data.get("phone"),
+                    address=customer_data.get("address"),
+                    tax_id=customer_data.get("tax_id"),
+                    notes=customer_data.get("notes")
+                )
                 success_message = "Customer created successfully"
             
             # Refresh list and show success message
