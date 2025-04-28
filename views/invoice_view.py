@@ -1344,8 +1344,9 @@ class InvoiceView(BaseView):
                 customer_id,  # Use the confirmed customer_id
                 self.current_invoice["invoice_id"],
                 self.current_invoice["total_amount"],
-                self.user["user_id"],
-                f"Facture #{self.current_invoice['invoice_number']}"
+                0,  # amount_paid (initial payment is 0)
+                f"Facture #{self.current_invoice['invoice_number']}",  # notes
+                self.user["user_id"]  # user_id
             )
             
             # Refresh the invoice
