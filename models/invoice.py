@@ -161,7 +161,7 @@ class Invoice(BaseModel):
                 # Add the quantity back to stock (opposite of what happened during sale)
                 stock_model.update_stock_quantity(
                     item["product_id"], 
-                    item["quantity"],  # Positive to add back to stock
+                    abs(item["quantity"]),  # Positive to add back to stock
                     f"Invoice void: {invoice['invoice_number']}", 
                     invoice_id
                 )

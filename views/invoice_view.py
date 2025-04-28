@@ -607,7 +607,7 @@ class InvoiceView(BaseView):
             
             for customer in self.customers:
                 if customer:  # Skip None entries
-                    customer_names.append(customer["name"])
+                    customer_names.append(customer["full_name"])
                     customer_map.append(customer)
             
             customer_combo.config(values=customer_names)
