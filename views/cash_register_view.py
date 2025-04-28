@@ -381,8 +381,8 @@ class CashRegisterView(BaseView):
                 else:
                     amount_str = f"-${abs(amount):.2f}" if amount is not None else "-"
                 
-                # Format balance
-                balance_str = f"${transaction['balance_after']:.2f}" if transaction["balance_after"] is not None else "-"
+                # Format balance (using new_amount field)
+                balance_str = f"${transaction['new_amount']:.2f}" if transaction.get("new_amount") is not None else "-"
                 
                 # Format type
                 type_str = transaction["transaction_type"].capitalize().replace("_", " ")
@@ -390,8 +390,8 @@ class CashRegisterView(BaseView):
                 # Get username
                 username = transaction.get("username", "-")
                 
-                # Get note/reason
-                note = transaction.get("note", "")
+                # Get note/reason (might be in 'description' or 'note' field)
+                note = transaction.get("description", "") or transaction.get("note", "")
                 
                 self.history_tree.insert(
                     "", 
@@ -437,15 +437,16 @@ class CashRegisterView(BaseView):
                 amount_str = f"-${abs(amount):.2f}" if amount is not None else "-"
             self.detail_amount_label.config(text=amount_str)
             
-            # Format balance
-            balance_str = f"${transaction['balance_after']:.2f}" if transaction["balance_after"] is not None else "-"
+            # Format balance (using new_amount field)
+            balance_str = f"${transaction['new_amount']:.2f}" if transaction.get("new_amount") is not None else "-"
             self.detail_balance_label.config(text=balance_str)
             
             # Show username
             self.detail_user_label.config(text=transaction.get("username", "-"))
             
-            # Show note
-            self.detail_note_label.config(text=transaction.get("note", "-"))
+            # Show note/description
+            note = transaction.get("description", "") or transaction.get("note", "-")
+            self.detail_note_label.config(text=note)
             
         except Exception as e:
             self.show_error(f"Error loading transaction details: {str(e)}")

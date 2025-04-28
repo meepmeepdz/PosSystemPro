@@ -153,7 +153,14 @@ class CashRegisterController:
         Returns:
             list: List of transactions
         """
-        return self.register_model.get_register_transactions(register_id, limit, offset)
+        transactions = self.register_model.get_register_transactions(register_id, limit, offset)
+        
+        # Make sure all transactions have the balance_after field for backward compatibility
+        for transaction in transactions:
+            if "balance_after" not in transaction and "new_amount" in transaction:
+                transaction["balance_after"] = transaction["new_amount"]
+                
+        return transactions
     
     def get_register_summary(self, register_id):
         """Get a summary of register activities.
@@ -239,4 +246,10 @@ class CashRegisterController:
             WHERE t.transaction_id = %s
         """
         
-        return self.db.fetch_one(query, (transaction_id,))
+        transaction = self.db.fetch_one(query, (transaction_id,))
+        
+        # Make sure to include all required fields, even if not present in the DB
+        if transaction and "balance_after" not in transaction and "new_amount" in transaction:
+            transaction["balance_after"] = transaction["new_amount"]
+            
+        return transaction

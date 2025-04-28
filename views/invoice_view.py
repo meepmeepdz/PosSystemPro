@@ -561,23 +561,104 @@ class InvoiceView(BaseView):
             self.show_error(f"Error checking cash register: {str(e)}")
     
     def _create_new_invoice(self):
-        """Create a new draft invoice."""
+        """Create a new invoice with customer selection first."""
         try:
-            # Create new invoice
-            new_invoice = self.invoice_controller.create_invoice(self.user["user_id"])
-            
-            # Refresh list and select new invoice
-            self._refresh_invoice_list()
-            self.invoice_tree.selection_set(new_invoice["invoice_id"])
-            self._on_invoice_selected()
-            
-            # Also refresh customer list
+            # Make sure customers list is up to date
             self._refresh_customers_list()
             
-            self.show_success("New invoice created")
+            # Create a customer selection dialog
+            customer_window = tk.Toplevel(self)
+            customer_window.title("Sélectionner un client")
+            customer_window.transient(self.winfo_toplevel())
+            customer_window.grab_set()
+            
+            # Center on screen
+            window_width = 400
+            window_height = 200
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
+            x = (screen_width - window_width) // 2
+            y = (screen_height - window_height) // 2
+            customer_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+            
+            # Create frame for content
+            frame = ttk.Frame(customer_window, padding=20)
+            frame.pack(fill=tk.BOTH, expand=True)
+            
+            # Instruction label
+            ttk.Label(
+                frame, 
+                text="Veuillez sélectionner un client pour la nouvelle facture:",
+                wraplength=350
+            ).pack(pady=(0, 15))
+            
+            # Customer selection dropdown
+            customer_var = tk.StringVar()
+            customer_combo = ttk.Combobox(
+                frame, 
+                textvariable=customer_var,
+                state="readonly",
+                width=40
+            )
+            
+            # Fill with customer names
+            customer_names = ["Sans client"]
+            customer_map = [None]  # First entry is None (no customer)
+            
+            for customer in self.customers:
+                if customer:  # Skip None entries
+                    customer_names.append(customer["name"])
+                    customer_map.append(customer)
+            
+            customer_combo.config(values=customer_names)
+            customer_combo.current(0)  # Select "Sans client" by default
+            customer_combo.pack(pady=(0, 20))
+            
+            # Buttons
+            button_frame = ttk.Frame(frame)
+            button_frame.pack(fill=tk.X)
+            
+            # Cancel button
+            ttk.Button(
+                button_frame, 
+                text="Annuler", 
+                command=customer_window.destroy
+            ).pack(side=tk.LEFT, padx=(0, 5), expand=True, fill=tk.X)
+            
+            # Create invoice button
+            def create_with_customer():
+                selected_index = customer_combo.current()
+                customer_id = None
+                
+                # If customer selected (not "Sans client")
+                if selected_index > 0:
+                    customer_id = customer_map[selected_index]["customer_id"]
+                
+                # Create invoice with the selected customer
+                new_invoice = self.invoice_controller.create_invoice(
+                    self.user["user_id"],
+                    customer_id=customer_id
+                )
+                
+                # Close the dialog
+                customer_window.destroy()
+                
+                # Refresh list and select new invoice
+                self._refresh_invoice_list()
+                self.invoice_tree.selection_set(new_invoice["invoice_id"])
+                self._on_invoice_selected()
+                
+                self.show_success("Nouvelle facture créée" + 
+                                 (f" pour {customer_var.get()}" if selected_index > 0 else ""))
+            
+            ttk.Button(
+                button_frame, 
+                text="Créer Facture", 
+                command=create_with_customer
+            ).pack(side=tk.RIGHT, padx=(5, 0), expand=True, fill=tk.X)
             
         except Exception as e:
-            self.show_error(f"Error creating invoice: {str(e)}")
+            self.show_error(f"Erreur lors de la création de la facture: {str(e)}")
     
     def _open_selected_invoice(self):
         """Open the selected invoice from the list."""
@@ -681,7 +762,7 @@ class InvoiceView(BaseView):
             total = self.current_invoice["total_amount"] or 0
             self.total_label.config(text=f"Total: {format_currency(total)}")
             
-            # Also update payment amount
+            # Also update payment amount - ensure we use the latest amount from current_invoice
             self.payment_amount_var.set(f"{total:.2f}")
             
             # Recalculate change
@@ -1102,8 +1183,8 @@ class InvoiceView(BaseView):
         
         # Get payment details
         try:
-            # Get total invoice amount
-            total_amount = decimal.Decimal(self.payment_amount_var.get())
+            # Get total invoice amount from current_invoice, not from the display variable
+            total_amount = decimal.Decimal(self.current_invoice["total_amount"] or 0)
             
             # Check if tendered amount is provided for cash payments
             payment_method = self.payment_method_var.get()
@@ -1219,22 +1300,35 @@ class InvoiceView(BaseView):
     def _save_as_debt(self):
         """Save the current invoice as a customer debt."""
         if not self.current_invoice:
-            self.show_warning("Please select or create an invoice first")
+            self.show_warning("Veuillez sélectionner ou créer une facture d'abord")
             return
         
         # Check if the invoice has items
         if not self.current_invoice.get("items"):
-            self.show_warning("Cannot create debt for an empty invoice")
+            self.show_warning("Impossible de créer une dette pour une facture vide")
             return
         
-        # Check if a customer is selected
-        if not self.current_invoice["customer_id"]:
-            self.show_warning("A customer must be selected to create a debt")
+        # Get current customer selection from combobox
+        customer_index = self.customer_combobox.current()
+        if customer_index <= 0:  # 0 is "No Customer"
+            self.show_warning("Un client doit être sélectionné pour créer une dette")
             return
+        
+        # Get customer details from the current selection
+        customer_id = self.customers[customer_index]["customer_id"] if customer_index > 0 else None
+        
+        # Update invoice customer if needed
+        if customer_id != self.current_invoice.get("customer_id"):
+            self.invoice_controller.update_invoice(
+                self.current_invoice["invoice_id"], 
+                {"customer_id": customer_id}
+            )
+            self.current_invoice["customer_id"] = customer_id
+            self.current_invoice["customer_name"] = self.customers[customer_index]["full_name"]
         
         # Confirm action
         confirm = self.show_confirmation(
-            "Are you sure you want to save this invoice as a customer debt?"
+            f"Voulez-vous vraiment enregistrer cette facture comme dette pour {self.customers[customer_index]['full_name']}?"
         )
         if not confirm:
             return
@@ -1247,20 +1341,20 @@ class InvoiceView(BaseView):
             
             # Create the debt record
             debt = self.debt_controller.create_debt(
-                self.current_invoice["customer_id"],
+                customer_id,  # Use the confirmed customer_id
                 self.current_invoice["invoice_id"],
                 self.current_invoice["total_amount"],
                 self.user["user_id"],
-                f"Invoice #{self.current_invoice['invoice_number']}"
+                f"Facture #{self.current_invoice['invoice_number']}"
             )
             
             # Refresh the invoice
             self._load_invoice_details(self.current_invoice["invoice_id"])
             
-            self.show_success("Invoice saved as customer debt")
+            self.show_success("Facture enregistrée comme dette client")
             
         except Exception as e:
-            self.show_error(f"Error saving as debt: {str(e)}")
+            self.show_error(f"Erreur lors de l'enregistrement de la dette: {str(e)}")
     
     def _calculate_change(self, event=None):
         """Calculate and display change amount based on tendered amount."""
@@ -1268,8 +1362,13 @@ class InvoiceView(BaseView):
             if not self.current_invoice:
                 return
                 
-            # Get total and tendered amounts
-            total_amount = float(self.payment_amount_var.get() or 0)
+            # Ensure we're using the latest total from the current invoice
+            if hasattr(self, 'current_invoice') and self.current_invoice and 'total_amount' in self.current_invoice:
+                total_amount = float(self.current_invoice["total_amount"] or 0)
+            else:
+                # Fallback to the payment amount variable
+                total_amount = float(self.payment_amount_var.get() or 0)
+                
             tendered_str = self.tendered_amount_var.get().strip()
             
             # Handle empty or invalid input
