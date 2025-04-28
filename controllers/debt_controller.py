@@ -79,7 +79,14 @@ class DebtController:
         Returns:
             dict: Debt data or None if not found
         """
-        return self.debt_model.get_by_id(debt_id)
+        debt = self.debt_model.get_by_id(debt_id)
+        
+        # If we have a debt but original_amount is not included, add it
+        if debt and "original_amount" not in debt:
+            debt["original_amount"] = debt.get("amount", 0)
+            debt["remaining_amount"] = debt.get("amount", 0) - debt.get("amount_paid", 0)
+            
+        return debt
     
     def get_customer_debts(self, customer_id, include_paid=False):
         """Get all debts for a customer.
@@ -152,6 +159,49 @@ class DebtController:
         
         return self.debt_model.search_debts(filters, limit=limit, offset=offset)
         
+    def add_debt_payment(self, debt_id, payment_amount, payment_method, user_id, notes=None):
+        """Add a payment to a debt.
+        
+        Args:
+            debt_id (str): Debt ID
+            payment_amount (float): Amount being paid
+            payment_method (str): Payment method
+            user_id (str): User ID making the payment
+            notes (str, optional): Notes about the payment
+            
+        Returns:
+            dict: Payment details
+            
+        Raises:
+            ValueError: If validation fails
+        """
+        # Get current debt
+        debt = self.debt_model.get_by_id(debt_id)
+        if not debt:
+            raise ValueError("Debt not found")
+        
+        # Record the payment
+        return self.debt_model.record_payment(debt_id, payment_amount, payment_method, user_id, notes)
+        
+    def get_debt_payments(self, debt_id):
+        """Get all payments for a debt.
+        
+        Args:
+            debt_id (str): Debt ID
+            
+        Returns:
+            list: List of payments for the debt
+        """
+        query = """
+            SELECT p.*,
+                   u.username as user_name
+            FROM debt_payments p
+            LEFT JOIN users u ON p.user_id = u.user_id
+            WHERE p.debt_id = %s
+            ORDER BY p.payment_date DESC
+        """
+        return self.db.fetch_all(query, (debt_id,))
+    
     def mark_debt_as_paid(self, debt_id, notes=None):
         """Mark a debt as paid.
         

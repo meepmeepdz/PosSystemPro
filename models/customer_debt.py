@@ -237,6 +237,8 @@ class CustomerDebt(BaseModel):
             SELECT cd.*, 
                    i.invoice_number,
                    i.created_at as invoice_date,
+                   cd.amount as original_amount,
+                   (cd.amount - cd.amount_paid) as remaining_amount,
                    u.username as created_by_name
             FROM customer_debts cd
             JOIN invoices i ON cd.invoice_id = i.invoice_id
@@ -287,6 +289,7 @@ class CustomerDebt(BaseModel):
                    c.phone as customer_phone,
                    i.invoice_number,
                    i.created_at as invoice_date,
+                   cd.amount as original_amount,
                    (cd.amount - cd.amount_paid) as remaining_amount,
                    EXTRACT(DAY FROM (NOW() - cd.created_at)) as days_outstanding
             FROM customer_debts cd
@@ -335,6 +338,7 @@ class CustomerDebt(BaseModel):
                    c.phone as customer_phone,
                    i.invoice_number,
                    i.created_at as invoice_date,
+                   cd.amount as original_amount,
                    (cd.amount - cd.amount_paid) as remaining_amount,
                    EXTRACT(DAY FROM (NOW() - cd.created_at)) as days_outstanding,
                    u.username as created_by_name
