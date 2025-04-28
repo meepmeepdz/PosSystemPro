@@ -494,54 +494,59 @@ class CustomerView(BaseView):
             if not customer_id:
                 return
             
-            # Get customer details
-            customer = self.customer_controller.get_customer_by_id(customer_id)
-            if not customer:
-                self.show_warning("Customer details could not be loaded")
-                return
-            
-            # Store current customer
-            self.current_customer = customer
-            
-            # Update header
-            self.detail_header.config(text=f"Edit Customer: {customer['full_name']}")
-            
-            # Update form fields
-            self.full_name_var.set(customer["full_name"])
-            self.email_var.set(customer["email"] or "")
-            self.phone_var.set(customer["phone"] or "")
-            
-            # Update address in text widget
-            self.address_text.delete(1.0, tk.END)
-            if customer.get("address"):
-                self.address_text.insert(1.0, customer["address"])
-            
-            # Update city, postal code, country
-            self.city_var.set(customer.get("city", ""))
-            self.postal_code_var.set(customer.get("postal_code", ""))
-            self.country_var.set(customer.get("country", ""))
-            
-            # Update tax ID
-            self.tax_id_var.set(customer.get("tax_id", ""))
-            
-            # Update notes in text widget
-            self.notes_text.delete(1.0, tk.END)
-            if customer.get("notes"):
-                self.notes_text.insert(1.0, customer["notes"])
-            
-            # Update status
-            self.is_active_var.set(customer.get("is_active", True))
-            
-            # Refresh invoices and debts tabs
-            self._refresh_invoices()
-            self._refresh_debts()
-            
-            # Hide info labels
-            self.invoices_info_label.pack_forget()
-            self.debts_info_label.pack_forget()
-            
+            try:
+                # Get customer details
+                customer = self.customer_controller.get_customer_by_id(customer_id)
+                if not customer:
+                    self.show_warning("Customer details could not be loaded")
+                    return
+                
+                # Store current customer
+                self.current_customer = customer
+                
+                # Update header
+                self.detail_header.config(text=f"Edit Customer: {customer['full_name']}")
+                
+                # Update form fields
+                self.full_name_var.set(customer["full_name"])
+                self.email_var.set(customer["email"] or "")
+                self.phone_var.set(customer["phone"] or "")
+                
+                # Update address in text widget
+                self.address_text.delete(1.0, tk.END)
+                if customer.get("address"):
+                    self.address_text.insert(1.0, customer["address"])
+                
+                # Update city, postal code, country
+                self.city_var.set(customer.get("city", ""))
+                self.postal_code_var.set(customer.get("postal_code", ""))
+                self.country_var.set(customer.get("country", ""))
+                
+                # Update tax ID
+                self.tax_id_var.set(customer.get("tax_id", ""))
+                
+                # Update notes in text widget
+                self.notes_text.delete(1.0, tk.END)
+                if customer.get("notes"):
+                    self.notes_text.insert(1.0, customer["notes"])
+                
+                # Update status
+                self.is_active_var.set(customer.get("is_active", True))
+                
+                # Hide info labels
+                self.invoices_info_label.pack_forget()
+                self.debts_info_label.pack_forget()
+                
+                # Only refresh related data if we have a valid customer with ID
+                if "customer_id" in customer and customer["customer_id"]:
+                    self._refresh_invoices()
+                    self._refresh_debts()
+                
+            except Exception as e:
+                self.show_error(f"Error loading customer details: {str(e)}")
+                
         except Exception as e:
-            self.show_error(f"Error loading customer details: {str(e)}")
+            self.show_error(f"Error selecting customer: {str(e)}")
     
     def _create_new_customer(self):
         """Create a new customer."""
@@ -618,33 +623,46 @@ class CustomerView(BaseView):
                 "is_active": is_active
             }
             
-            if self.current_customer:
-                # Update existing customer
-                result = self.customer_controller.update_customer(
-                    self.current_customer["customer_id"],
-                    customer_data
-                )
-                success_message = "Customer updated successfully"
-            else:
-                # Create new customer
-                result = self.customer_controller.create_customer(
-                    full_name=customer_data["full_name"],
-                    email=customer_data.get("email"),
-                    phone=customer_data.get("phone"),
-                    address=customer_data.get("address"),
-                    tax_id=customer_data.get("tax_id"),
-                    notes=customer_data.get("notes")
-                )
-                success_message = "Customer created successfully"
+            try:
+                if self.current_customer:
+                    # Update existing customer
+                    result = self.customer_controller.update_customer(
+                        self.current_customer["customer_id"],
+                        customer_data
+                    )
+                    success_message = "Customer updated successfully"
+                else:
+                    # Create new customer
+                    result = self.customer_controller.create_customer(
+                        full_name=customer_data["full_name"],
+                        email=customer_data.get("email"),
+                        phone=customer_data.get("phone"),
+                        address=customer_data.get("address"),
+                        tax_id=customer_data.get("tax_id"),
+                        notes=customer_data.get("notes")
+                    )
+                    success_message = "Customer created successfully"
+                
+                # Refresh list and show success message
+                self._refresh_customer_list()
+                self.show_success(success_message)
+                
+                # Select the updated/created customer if available
+                if result and "customer_id" in result:
+                    try:
+                        # Set selection
+                        self.customer_tree.selection_set([result["customer_id"]])
+                        
+                        # Update current customer with result to avoid race condition
+                        self.current_customer = result
+                        
+                        # Call customer selected to update UI
+                        self._on_customer_selected()
+                    except Exception as e:
+                        self.show_error(f"Error selecting saved customer: {str(e)}")
             
-            # Refresh list and show success message
-            self._refresh_customer_list()
-            self.show_success(success_message)
-            
-            # Select the updated/created customer if available
-            if result and "customer_id" in result:
-                self.customer_tree.selection_set([result["customer_id"]])
-                self._on_customer_selected()
+            except Exception as e:
+                self.show_error(f"Error during customer save operation: {str(e)}")
             
         except Exception as e:
             self.show_error(f"Error saving customer: {str(e)}")

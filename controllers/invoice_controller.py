@@ -221,3 +221,34 @@ class InvoiceController:
         if not invoice:
             raise ValueError("Invoice not found")
         return invoice["total_amount"]
+        
+    def get_customer_invoices(self, customer_id, limit=100, offset=0, order_by="created_at DESC"):
+        """Get invoices for a specific customer.
+        
+        Args:
+            customer_id (str): Customer ID
+            limit (int, optional): Maximum number of records to return
+            offset (int, optional): Number of records to skip
+            order_by (str, optional): Column to order by
+            
+        Returns:
+            list: List of invoices for the customer
+            
+        Raises:
+            ValueError: If customer_id is None or empty
+        """
+        if not customer_id:
+            raise ValueError("Customer ID is required")
+            
+        try:
+            # Use the search_invoices method with customer_id filter
+            return self.invoice_model.search_invoices(
+                customer_id=customer_id,
+                order_by=order_by,
+                limit=limit,
+                offset=offset
+            )
+        except Exception as e:
+            # Log the error and re-raise
+            print(f"Error getting customer invoices: {str(e)}")
+            return []  # Return empty list instead of raising exception for better UI handling

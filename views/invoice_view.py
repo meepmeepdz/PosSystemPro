@@ -525,7 +525,7 @@ class InvoiceView(BaseView):
             register = self.cash_register_controller.get_current_register()
             if register:
                 self.register_status_label.config(
-                    text=f"Cash Register: Open - Balance: {format_currency(register['current_balance'])}",
+                    text=f"Cash Register: Open - Balance: {format_currency(register['current_amount'])}",
                     foreground="green"
                 )
             else:
