@@ -55,6 +55,8 @@ class InvoiceView(BaseView):
         self.barcode_var = tk.StringVar()
         self.discount_var = tk.StringVar(value="0.00")
         self.payment_amount_var = tk.StringVar(value="0.00")
+        self.tendered_amount_var = tk.StringVar(value="0.00")
+        self.change_amount_var = tk.StringVar(value="0.00")
         self.payment_method_var = tk.StringVar(value="CASH")
         
         # Create UI components
@@ -349,15 +351,37 @@ class InvoiceView(BaseView):
         payment_frame = ttk.Frame(self.checkout_frame)
         payment_frame.pack(fill=tk.X, pady=5)
         
-        # Payment amount
+        # Payment amount (total to pay)
         amount_frame = ttk.Frame(payment_frame)
         amount_frame.pack(fill=tk.X, pady=5)
         
-        amount_label = ttk.Label(amount_frame, text="Payment Amount:")
+        amount_label = ttk.Label(amount_frame, text="Total à payer:")
         amount_label.pack(side=tk.LEFT, padx=(0, 5))
         
-        amount_entry = ttk.Entry(amount_frame, textvariable=self.payment_amount_var)
+        amount_entry = ttk.Entry(amount_frame, textvariable=self.payment_amount_var, state="readonly")
         amount_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        # Tendered amount (montant versé par le client)
+        tendered_frame = ttk.Frame(payment_frame)
+        tendered_frame.pack(fill=tk.X, pady=5)
+        
+        tendered_label = ttk.Label(tendered_frame, text="Montant versé:")
+        tendered_label.pack(side=tk.LEFT, padx=(0, 5))
+        
+        tendered_entry = ttk.Entry(tendered_frame, textvariable=self.tendered_amount_var)
+        tendered_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tendered_entry.bind("<KeyRelease>", self._calculate_change)
+        
+        # Change amount (monnaie à rendre)
+        change_frame = ttk.Frame(payment_frame)
+        change_frame.pack(fill=tk.X, pady=5)
+        
+        change_label = ttk.Label(change_frame, text="Monnaie à rendre:")
+        change_label.pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.change_display = ttk.Label(change_frame, textvariable=self.change_amount_var,
+                                       font=("", 12, "bold"), foreground="green")
+        self.change_display.pack(side=tk.RIGHT)
         
         # Payment method
         method_frame = ttk.Frame(payment_frame)
@@ -659,6 +683,9 @@ class InvoiceView(BaseView):
             
             # Also update payment amount
             self.payment_amount_var.set(f"{total:.2f}")
+            
+            # Recalculate change
+            self._calculate_change()
     
     def _on_barcode_changed(self, *args):
         """Handle barcode field changes."""
@@ -1075,15 +1102,52 @@ class InvoiceView(BaseView):
         
         # Get payment details
         try:
-            payment_amount = float(self.payment_amount_var.get())
+            # Get total invoice amount
+            total_amount = decimal.Decimal(self.payment_amount_var.get())
+            
+            # Check if tendered amount is provided for cash payments
             payment_method = self.payment_method_var.get()
+            tendered_str = self.tendered_amount_var.get().strip()
+            
+            # For cash payments, verify the tendered amount
+            if payment_method == "CASH":
+                if not tendered_str:
+                    self.show_warning("Please enter le montant versé par le client")
+                    return
+                
+                # Convert tendered amount to Decimal
+                try:
+                    tendered_amount = decimal.Decimal(tendered_str.replace(",", "."))
+                    if tendered_amount < total_amount:
+                        # Client isn't paying the full amount
+                        confirm = self.show_confirmation(
+                            "Le montant versé est inférieur au total. Voulez-vous sauvegarder le reste comme dette client?"
+                        )
+                        if confirm:
+                            # Use partial payment and save the rest as debt
+                            payment_amount = tendered_amount
+                            # Make sure a customer is selected
+                            if not self.current_invoice["customer_id"]:
+                                self.show_warning("Pour enregistrer une dette, vous devez sélectionner un client")
+                                return
+                        else:
+                            return  # Cancelled
+                    else:
+                        # Full payment
+                        payment_amount = total_amount
+                except (ValueError, decimal.InvalidOperation):
+                    self.show_warning("Montant versé invalide")
+                    return
+            else:
+                # For non-cash payments, use the total invoice amount
+                payment_amount = total_amount
             
             if payment_amount <= 0:
-                self.show_warning("Payment amount must be positive")
+                self.show_warning("Le montant du paiement doit être positif")
                 return
                 
-        except ValueError:
-            self.show_warning("Please enter a valid payment amount")
+        except (ValueError, decimal.InvalidOperation):
+            self.show_warning("Veuillez saisir des montants valides")
             return
         
         # Check if cash register is open for cash payments
@@ -1091,7 +1155,7 @@ class InvoiceView(BaseView):
             register = self.cash_register_controller.get_current_register()
             if not register:
                 confirm = self.show_confirmation(
-                    "Cash register is not open. Do you want to open it now?"
+                    "La caisse n'est pas ouverte. Voulez-vous l'ouvrir maintenant?"
                 )
                 if confirm:
                     self._open_cash_register()
@@ -1107,29 +1171,50 @@ class InvoiceView(BaseView):
             # Complete the invoice
             self.invoice_controller.finalize_invoice(self.current_invoice["invoice_id"])
             
+            # Convert Decimal to float for API consistency
+            payment_amount_float = float(payment_amount)
+            
             # Record the payment
             payment = self.payment_controller.create_payment(
                 self.current_invoice["invoice_id"],
                 self.user["user_id"],
-                payment_amount,
+                payment_amount_float,
                 payment_method
             )
+            
+            # If there's remaining balance and customer is selected, create debt record
+            if payment_amount < total_amount and self.current_invoice["customer_id"]:
+                # Calculate remaining amount
+                remaining = float(total_amount) - payment_amount_float
+                
+                # Create debt record
+                self.debt_controller.create_debt(
+                    self.current_invoice["customer_id"],
+                    self.current_invoice["invoice_id"],
+                    remaining,
+                    self.user["user_id"],
+                    f"Reste à payer pour facture n°{self.current_invoice['invoice_number']}"
+                )
+                
+                self.show_success(f"Paiement partiel enregistré. Dette de {format_currency(remaining)} créée.")
+            else:
+                self.show_success("Paiement traité avec succès")
+            
+            # If using cash and gave more than the total, show change amount
+            if payment_method == "CASH" and payment_amount_float == float(total_amount) and tendered_amount > total_amount:
+                change = float(tendered_amount) - float(total_amount)
+                self.show_info(f"Monnaie à rendre au client: {format_currency(change)}")
             
             # Refresh the invoice
             self._load_invoice_details(self.current_invoice["invoice_id"])
             
-            # Show success
-            self.show_success("Payment processed successfully")
-            
-            # Check if fully paid
-            if self.current_invoice["total_amount"] <= payment_amount:
-                # Ask if user wants to print receipt
-                confirm = self.show_confirmation("Do you want to print a receipt?")
-                if confirm:
-                    self._print_receipt(self.current_invoice["invoice_id"])
+            # Ask if user wants to print receipt
+            confirm = self.show_confirmation("Voulez-vous imprimer un reçu?")
+            if confirm:
+                self._print_receipt(self.current_invoice["invoice_id"])
             
         except Exception as e:
-            self.show_error(f"Error processing payment: {str(e)}")
+            self.show_error(f"Erreur lors du traitement du paiement: {str(e)}")
     
     def _save_as_debt(self):
         """Save the current invoice as a customer debt."""
@@ -1176,6 +1261,40 @@ class InvoiceView(BaseView):
             
         except Exception as e:
             self.show_error(f"Error saving as debt: {str(e)}")
+    
+    def _calculate_change(self, event=None):
+        """Calculate and display change amount based on tendered amount."""
+        try:
+            if not self.current_invoice:
+                return
+                
+            # Get total and tendered amounts
+            total_amount = float(self.payment_amount_var.get() or 0)
+            tendered_str = self.tendered_amount_var.get().strip()
+            
+            # Handle empty or invalid input
+            if not tendered_str:
+                self.change_amount_var.set("0.00")
+                return
+                
+            # Convert tendered amount to float (handle both . and , as decimal separator)
+            tendered_amount = float(tendered_str.replace(",", "."))
+            
+            # Calculate change or remaining debt
+            if tendered_amount >= total_amount:
+                # Customer paid enough or more - show change to return
+                change = tendered_amount - total_amount
+                self.change_amount_var.set(f"{change:.2f}")
+                self.change_display.config(foreground="green")
+            else:
+                # Customer didn't pay enough - show remaining as negative
+                remaining = total_amount - tendered_amount
+                self.change_amount_var.set(f"-{remaining:.2f}")
+                self.change_display.config(foreground="red")
+                
+        except (ValueError, TypeError, decimal.InvalidOperation):
+            # Reset on invalid input
+            self.change_amount_var.set("0.00")
     
     def _refresh_payment_list(self):
         """Refresh the list of payments for the current invoice."""
